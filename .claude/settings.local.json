@@ -10,7 +10,10 @@
       "Bash(del:*)",
       "Bash(dir:*)",
       "Bash(taskkill:*)",
-      "Bash(nul:*)"
+      "Bash(nul:*)",
+      "Bash(move fix-schedule.js tests )",
+      "Bash(move debug-db.js tests )",
+      "Bash(move:*)"
     ],
     "deny": [],
     "ask": []
