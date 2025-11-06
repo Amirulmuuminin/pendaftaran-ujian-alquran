@@ -22,11 +22,14 @@ export interface Exam {
   student_id: string;
   class_id: string;
   exam_date: number;
+  exam_date_key?: string;
   status: string;
   score?: number;
   juz_number?: string;
   exam_type: 'non-5juz' | '5juz';
   notes?: string;
+  exam_day?: string;
+  exam_period?: string;
   created_at: number;
   updated_at: number;
 }
@@ -53,6 +56,8 @@ export interface DataContextType {
   deleteStudent: (classId: string, studentId: string) => Promise<void>;
   addExam: (classId: string, studentId: string, examData: Omit<Exam, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   deleteExam: (classId: string, studentId: string, examId: string) => Promise<void>;
+  checkDateConflict: (classId: string, dateKey: string, period: string) => Promise<boolean>;
+  getExamsByDate: (classId: string, dateKey: string) => Promise<any[]>;
 }
 
 export const scheduleDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
@@ -72,3 +77,34 @@ export const juzRanges = [
   { value: '21-25', label: '21-25' },
   { value: '26-30', label: '26-30' },
 ];
+
+// New types for unified slot system
+export interface AvailableSlot {
+  date: Date;
+  dateKey: string; // YYYY-MM-DD format
+  period: string; // "Jam ke-1", "Jam ke-2", etc.
+  dayName: string; // "Senin", "Selasa", etc.
+  displayText: string; // "Senin, 6 Des - Jam 1"
+  distance: number; // days from today
+}
+
+export interface SlotSelection {
+  dateKey: string;
+  period: string;
+}
+
+export interface ExamSlotSelectorProps {
+  selectedSlot?: SlotSelection;
+  onSlotChange: (slot: SlotSelection) => void;
+  examType: 'non-5juz' | '5juz';
+  classSchedule?: string;
+  existingExams?: Exam[];
+  disabled?: boolean;
+  classId: string; // Required for proper slot discovery
+}
+
+export interface MultiSlotSelectorProps extends Omit<ExamSlotSelectorProps, 'selectedSlot' | 'onSlotChange'> {
+  selectedSlots: SlotSelection[];
+  onSlotsChange: (slots: SlotSelection[]) => void;
+  requiredCount: number; // 5 for 5juz exams
+}

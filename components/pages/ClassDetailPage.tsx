@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from "react";
 import { toast } from "sonner";
 import useDataStore from "../../store";
-import { Student, Exam, juzRanges } from "../../types";
+import { Student, Exam, juzRanges, SlotSelection } from "../../types";
 import { Button, Dialog, Input, ConfirmDialog } from "../ui";
-import { StudentCard } from "../features";
+import { StudentCard, ExamScheduleSelector, ExamDatePicker, ExamSlotSelector, MultiSlotSelector } from "../features";
 import {
   Plus,
   Users,
@@ -44,9 +44,25 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
   const [examDetail, setExamDetail] = useState("");
   const [juzRange, setJuzRange] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState<SlotSelection | undefined>();
 
   // Form states for exam registration (existing student)
   const [examTypeTab, setExamTypeTab] = useState<'non-5juz' | '5juz'>('non-5juz');
+  const [examRegSlot, setExamRegSlot] = useState<SlotSelection | undefined>();
+
+  // Form states for 5 juz schedules (using SlotSelection)
+  const [juzSlots, setJuzSlots] = useState<SlotSelection[]>([
+    { dateKey: "", period: "" },
+    { dateKey: "", period: "" },
+    { dateKey: "", period: "" },
+    { dateKey: "", period: "" },
+    { dateKey: "", period: "" },
+  ]);
+
+  // Get all exams for a class to check date conflicts
+  const getAllClassExams = () => {
+    return classItem.students.flatMap(student => student.exams || []);
+  };
 
   if (loading) {
     return (
@@ -77,6 +93,14 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     setExamDetail("");
     setJuzRange("");
     setNotes("");
+    setSelectedSlot(undefined);
+    setJuzSlots([
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+    ]);
     setIsAddStudentOpen(true);
   };
 
@@ -96,6 +120,14 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     setExamDetail("");
     setJuzRange("");
     setNotes("");
+    setExamRegSlot(undefined);
+    setJuzSlots([
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+      { dateKey: "", period: "" },
+    ]);
     setIsExamRegistrationOpen(true);
   };
 
@@ -120,9 +152,19 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
             toast.error("Detail ujian non-5 juz wajib diisi.");
             return;
           }
+          if (!selectedSlot || !selectedSlot.dateKey || !selectedSlot.period) {
+            toast.error("Jadwal ujian wajib dipilih.");
+            return;
+          }
         } else {
           if (!juzRange) {
             toast.error("Pilih juz untuk ujian 5 juz.");
+            return;
+          }
+          // Validasi jadwal 5 juz
+          const invalidSchedule = juzSlots.some(slot => !slot.dateKey || !slot.period);
+          if (invalidSchedule) {
+            toast.error("Semua jadwal ujian 5 juz harus dilengkapi.");
             return;
           }
         }
@@ -138,17 +180,42 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
         const newStudent = updatedClass?.students?.find(s => s.name === studentName.trim());
 
         if (newStudent) {
-          // Daftarkan ujian untuk murid baru
-          const examData = {
-            exam_date: Math.floor(Date.now() / 1000),
-            status: 'scheduled',
-            exam_type: registrationTypeTab,
-            score: undefined,
-            juz_number: registrationTypeTab === '5juz' ? juzRange : examDetail,
-            notes: notes.trim() || undefined,
-          };
+          if (registrationTypeTab === 'non-5juz') {
+            // Daftarkan ujian non-5 juz untuk murid baru
+            const examDate = new Date(selectedSlot!.dateKey + 'T00:00:00');
+            const examData = {
+              exam_date: Math.floor(examDate.getTime() / 1000),
+              exam_date_key: selectedSlot!.dateKey,
+              status: 'scheduled',
+              exam_type: registrationTypeTab,
+              score: undefined,
+              juz_number: examDetail,
+              notes: notes.trim() || undefined,
+              exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
+              exam_period: selectedSlot!.period,
+            };
 
-          await addExam(classId, newStudent.id, examData);
+            await addExam(classId, newStudent.id, examData);
+          } else {
+            // Daftarkan 5 ujian untuk 5 juz
+            const juzStart = parseInt(juzRange.split('-')[0]);
+            for (let i = 0; i < 5; i++) {
+              const examDate = new Date(juzSlots[i].dateKey + 'T00:00:00');
+              const examData = {
+                exam_date: Math.floor(examDate.getTime() / 1000),
+                exam_date_key: juzSlots[i].dateKey,
+                status: 'scheduled',
+                exam_type: registrationTypeTab,
+                score: undefined,
+                juz_number: (juzStart + i).toString(),
+                notes: notes.trim() || undefined,
+                exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
+                exam_period: juzSlots[i].period,
+              };
+
+              await addExam(classId, newStudent.id, examData);
+            }
+          }
           toast.success("Murid baru berhasil ditambahkan dengan ujian!");
         } else {
           toast.success("Murid baru berhasil ditambahkan!");
@@ -160,6 +227,14 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
         setExamDetail("");
         setJuzRange("");
         setNotes("");
+        setSelectedSlot(undefined);
+        setJuzSlots([
+          { dateKey: "", period: "" },
+          { dateKey: "", period: "" },
+          { dateKey: "", period: "" },
+          { dateKey: "", period: "" },
+          { dateKey: "", period: "" },
+        ]);
       }
     } catch (error) {
       toast.error("Gagal menyimpan data. Silakan coba lagi.");
@@ -174,17 +249,64 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     }
 
     try {
-      const examData = {
-        exam_date: Math.floor(Date.now() / 1000),
-        status: 'scheduled',
-        exam_type: examTypeTab,
-        score: undefined,
-        juz_number: examTypeTab === '5juz' ? juzRange : examDetail,
-        notes: notes.trim() || undefined,
-      };
+      // Validasi form
+      if (examTypeTab === 'non-5juz') {
+        if (!examDetail.trim()) {
+          toast.error("Detail ujian non-5 juz wajib diisi.");
+          return;
+        }
+        if (!examRegSlot || !examRegSlot.dateKey || !examRegSlot.period) {
+          toast.error("Jadwal ujian wajib dipilih.");
+          return;
+        }
 
-      await addExam(classId, selectedStudent.id, examData);
-      toast.success("Ujian berhasil didaftarkan!");
+        const examDate = new Date(examRegSlot.dateKey + 'T00:00:00');
+        const examData = {
+          exam_date: Math.floor(examDate.getTime() / 1000),
+          exam_date_key: examRegSlot.dateKey,
+          status: 'scheduled',
+          exam_type: examTypeTab,
+          score: undefined,
+          juz_number: examDetail,
+          notes: notes.trim() || undefined,
+          exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
+          exam_period: examRegSlot.period,
+        };
+
+        await addExam(classId, selectedStudent.id, examData);
+        toast.success("Ujian berhasil didaftarkan!");
+      } else {
+        if (!juzRange) {
+          toast.error("Pilih juz untuk ujian 5 juz.");
+          return;
+        }
+        // Validasi jadwal 5 juz
+        const invalidSchedule = juzSlots.some(slot => !slot.dateKey || !slot.period);
+        if (invalidSchedule) {
+          toast.error("Semua jadwal ujian 5 juz harus dilengkapi.");
+          return;
+        }
+
+        // Daftarkan 5 ujian untuk 5 juz
+        const juzStart = parseInt(juzRange.split('-')[0]);
+        for (let i = 0; i < 5; i++) {
+          const examDate = new Date(juzSlots[i].dateKey + 'T00:00:00');
+          const examData = {
+            exam_date: Math.floor(examDate.getTime() / 1000),
+            exam_date_key: juzSlots[i].dateKey,
+            status: 'scheduled',
+            exam_type: examTypeTab,
+            score: undefined,
+            juz_number: (juzStart + i).toString(),
+            notes: notes.trim() || undefined,
+            exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
+            exam_period: juzSlots[i].period,
+          };
+
+          await addExam(classId, selectedStudent.id, examData);
+        }
+        toast.success("5 ujian berhasil didaftarkan!");
+      }
 
       setIsExamRegistrationOpen(false);
       setSelectedStudent(null);
@@ -192,6 +314,14 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
       setExamDetail("");
       setJuzRange("");
       setNotes("");
+      setExamRegSlot(undefined);
+      setJuzSlots([
+        { dateKey: "", period: "" },
+        { dateKey: "", period: "" },
+        { dateKey: "", period: "" },
+        { dateKey: "", period: "" },
+        { dateKey: "", period: "" },
+      ]);
     } catch (error) {
       toast.error("Gagal mendaftarkan ujian. Silakan coba lagi.");
     }
@@ -326,7 +456,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
 
                 {/* Tab Content */}
                 {registrationTypeTab === 'non-5juz' ? (
-                  <div>
+                  <div className="space-y-4">
                     <Input
                       label="Ujian"
                       value={examDetail}
@@ -334,25 +464,45 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                       placeholder="Contoh: 1/2 ke-1 juz 1"
                       required
                     />
+                    <ExamSlotSelector
+                      selectedSlot={selectedSlot}
+                      onSlotChange={setSelectedSlot}
+                      examType={registrationTypeTab}
+                      classSchedule={classItem.schedule}
+                      existingExams={getAllClassExams()}
+                                            classId={classId}
+                    />
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pilih Juz
-                    </label>
-                    <select
-                      value={juzRange}
-                      onChange={(e) => setJuzRange(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      required
-                    >
-                      <option value="">Pilih juz</option>
-                      {juzRanges.map((range) => (
-                        <option key={range.value} value={range.value}>
-                          {range.label}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pilih Juz
+                      </label>
+                      <select
+                        value={juzRange}
+                        onChange={(e) => setJuzRange(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        required
+                      >
+                        <option value="">Pilih juz</option>
+                        {juzRanges.map((range) => (
+                          <option key={range.value} value={range.value}>
+                            {range.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <MultiSlotSelector
+                      selectedSlots={juzSlots}
+                      onSlotsChange={setJuzSlots}
+                      requiredCount={5}
+                      examType={registrationTypeTab}
+                      classSchedule={classItem.schedule}
+                      existingExams={getAllClassExams()}
+                                            classId={classId}
+                    />
                   </div>
                 )}
 
@@ -383,6 +533,16 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           setExamDetail("");
           setJuzRange("");
           setNotes("");
+          setExamRegDay("");
+          setExamRegPeriod("");
+          setExamRegSelectedDate("");
+          setJuzSchedules([
+            { date: "", period: "" },
+            { date: "", period: "" },
+            { date: "", period: "" },
+            { date: "", period: "" },
+            { date: "", period: "" },
+          ]);
         }}
         title={`Daftarkan Ujian - ${selectedStudent?.name}`}
       >
@@ -416,7 +576,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
 
             {/* Tab Content */}
             {examTypeTab === 'non-5juz' ? (
-              <div>
+              <div className="space-y-4">
                 <Input
                   label="Ujian"
                   value={examDetail}
@@ -424,25 +584,45 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                   placeholder="Contoh: 1/2 ke-1 juz 1"
                   required
                 />
+                <ExamSlotSelector
+                  selectedSlot={examRegSlot}
+                  onSlotChange={setExamRegSlot}
+                  examType={examTypeTab}
+                  classSchedule={classItem.schedule}
+                  existingExams={selectedStudent?.exams || []}
+                                    classId={classId}
+                />
               </div>
             ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pilih Juz
-                </label>
-                <select
-                  value={juzRange}
-                  onChange={(e) => setJuzRange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  required
-                >
-                  <option value="">Pilih juz</option>
-                  {juzRanges.map((range) => (
-                    <option key={range.value} value={range.value}>
-                      {range.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pilih Juz
+                  </label>
+                  <select
+                    value={juzRange}
+                    onChange={(e) => setJuzRange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    required
+                  >
+                    <option value="">Pilih juz</option>
+                    {juzRanges.map((range) => (
+                      <option key={range.value} value={range.value}>
+                        {range.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <MultiSlotSelector
+                  selectedSlots={juzSlots}
+                  onSlotsChange={setJuzSlots}
+                  requiredCount={5}
+                  examType={examTypeTab}
+                  classSchedule={classItem.schedule}
+                  existingExams={getAllClassExams()}
+                                    classId={classId}
+                />
               </div>
             )}
 

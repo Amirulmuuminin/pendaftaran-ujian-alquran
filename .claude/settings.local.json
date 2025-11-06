@@ -4,7 +4,13 @@
       "Bash(npm run dev)",
       "Bash(npm run build)",
       "Bash(npm install:*)",
-      "Bash(del \"store\\store.js\")"
+      "Bash(del \"store\\store.js\")",
+      "Bash(npx turboso-cli update:*)",
+      "Bash(node:*)",
+      "Bash(del:*)",
+      "Bash(dir:*)",
+      "Bash(taskkill:*)",
+      "Bash(nul:*)"
     ],
     "deny": [],
     "ask": []

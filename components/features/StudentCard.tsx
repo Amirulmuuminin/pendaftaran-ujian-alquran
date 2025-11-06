@@ -28,7 +28,7 @@ const StudentCard: React.FC<StudentCardProps> = ({
             {student.name}
           </h3>
           <p className="text-xs text-gray-500 mt-1">
-            Terdaftar: {formatDate(student.created_at)}
+            Terdaftar: {new Date(student.created_at * 1000).toLocaleDateString('id-ID')}
           </p>
         </div>
         <div className="flex space-x-1">
@@ -89,8 +89,27 @@ const StudentCard: React.FC<StudentCardProps> = ({
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {new Date(exam.exam_date * 1000).toLocaleDateString('id-ID')}
-                    {exam.notes && ` • ${exam.notes}`}
+                    {exam.exam_date_key && exam.exam_period ? (
+                      <>
+                        {new Date(exam.exam_date_key + 'T00:00:00').toLocaleDateString('id-ID', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}, {exam.exam_period}
+                        {exam.notes && ` • ${exam.notes}`}
+                      </>
+                    ) : exam.exam_day && exam.exam_period ? (
+                      <>
+                        {exam.exam_day}, {exam.exam_period}
+                        {exam.notes && ` • ${exam.notes}`}
+                      </>
+                    ) : (
+                      <>
+                        {new Date(exam.exam_date * 1000).toLocaleDateString('id-ID')}
+                        {exam.notes && ` • ${exam.notes}`}
+                      </>
+                    )}
                   </div>
                 </div>
                 <button
