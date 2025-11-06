@@ -20,15 +20,17 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     classes,
     deleteClass,
     addStudent,
+    addStudentOptimized,
     updateStudent,
     deleteStudent,
     addExam,
+    addExamOptimized,
     deleteExam,
     findClass,
     loading,
   } = useDataStore();
 
-  const classItem = useMemo(() => findClass(classId), [findClass, classId]);
+  const classItem = useMemo(() => findClass(classId), [findClass, classId, classes]);
 
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
@@ -169,15 +171,8 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           }
         }
 
-        // Tambah murid baru
-        await addStudent(classId, studentName.trim());
-
-        // Reload data untuk mendapatkan ID murid yang baru ditambahkan
-        await useDataStore.getState().loadData();
-
-        // Cari murid yang baru ditambahkan
-        const updatedClass = findClass(classId);
-        const newStudent = updatedClass?.students?.find(s => s.name === studentName.trim());
+        // Tambah murid baru dengan fungsi optimized
+        const newStudent = await addStudentOptimized(classId, studentName.trim());
 
         if (newStudent) {
           if (registrationTypeTab === 'non-5juz') {
@@ -195,7 +190,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
               exam_period: selectedSlot!.period,
             };
 
-            await addExam(classId, newStudent.id, examData);
+            await addExamOptimized(classId, newStudent.id, examData);
           } else {
             // Daftarkan 5 ujian untuk 5 juz
             const juzStart = parseInt(juzRange.split('-')[0]);
@@ -213,7 +208,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                 exam_period: juzSlots[i].period,
               };
 
-              await addExam(classId, newStudent.id, examData);
+              await addExamOptimized(classId, newStudent.id, examData);
             }
           }
           toast.success("Murid baru berhasil ditambahkan dengan ujian!");
@@ -273,7 +268,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           exam_period: examRegSlot.period,
         };
 
-        await addExam(classId, selectedStudent.id, examData);
+        await addExamOptimized(classId, selectedStudent.id, examData);
         toast.success("Ujian berhasil didaftarkan!");
       } else {
         if (!juzRange) {
@@ -303,7 +298,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
             exam_period: juzSlots[i].period,
           };
 
-          await addExam(classId, selectedStudent.id, examData);
+          await addExamOptimized(classId, selectedStudent.id, examData);
         }
         toast.success("5 ujian berhasil didaftarkan!");
       }
@@ -533,15 +528,13 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           setExamDetail("");
           setJuzRange("");
           setNotes("");
-          setExamRegDay("");
-          setExamRegPeriod("");
-          setExamRegSelectedDate("");
-          setJuzSchedules([
-            { date: "", period: "" },
-            { date: "", period: "" },
-            { date: "", period: "" },
-            { date: "", period: "" },
-            { date: "", period: "" },
+          setExamRegSlot(undefined);
+          setJuzSlots([
+            { dateKey: "", period: "" },
+            { dateKey: "", period: "" },
+            { dateKey: "", period: "" },
+            { dateKey: "", period: "" },
+            { dateKey: "", period: "" },
           ]);
         }}
         title={`Daftarkan Ujian - ${selectedStudent?.name}`}

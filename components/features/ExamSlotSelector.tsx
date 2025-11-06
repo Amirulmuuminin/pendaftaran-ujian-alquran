@@ -31,10 +31,10 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
     return null;
   };
 
-  // Load available slots on component mount
+  // Load available slots on component mount and when essential props change
   useEffect(() => {
     loadAvailableSlots();
-  }, [examType, classSchedule, existingExams, classId]);
+  }, [examType, classId]); // Only reload when exam type or classId changes
 
   const loadAvailableSlots = async () => {
     const classId = getClassId();

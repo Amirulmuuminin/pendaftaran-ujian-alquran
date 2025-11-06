@@ -15,6 +15,7 @@ const DaftarKelasPage: React.FC<DaftarKelasPageProps> = ({ onViewDetail }) => {
     classes,
     deleteClass,
     addClass,
+    addClassOptimized,
     updateClass,
     loading,
   } = useDataStore();
@@ -97,8 +98,12 @@ const DaftarKelasPage: React.FC<DaftarKelasPageProps> = ({ onViewDetail }) => {
         await updateClass(classToEdit.id, classData);
         toast.success("Kelas berhasil diperbarui!");
       } else {
-        await addClass(classData);
-        toast.success("Kelas baru berhasil ditambahkan!");
+        const newClass = await addClassOptimized(classData);
+        if (newClass) {
+          toast.success("Kelas baru berhasil ditambahkan!");
+        } else {
+          toast.error("Gagal menambahkan kelas.");
+        }
       }
 
       setIsAddClassOpen(false);

@@ -19,7 +19,7 @@ const MultiSlotSelector: React.FC<MultiSlotSelectorProps> = ({
 
   useEffect(() => {
     loadAvailableSlots();
-  }, [examType, classSchedule, existingExams, classId]);
+  }, [examType, classId]); // Only reload when exam type or classId changes
 
   const loadAvailableSlots = async () => {
     // Priority logic for getting class ID

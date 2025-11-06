@@ -8,6 +8,9 @@ interface DataStore extends DataContextType {
   getNearestAvailableSlots: (classId: string, examType: 'non-5juz' | '5juz', limit?: number) => Promise<AvailableSlot[]>;
   getAvailableSlotsForDateRange: (classId: string, startDate: string, endDate: string) => Promise<AvailableSlot[]>;
   getClassScheduleForDay: (classSchedule: string, dayName: string) => string[];
+  addStudentOptimized: (classId: string, studentName: string) => Promise<any>;
+  addClassOptimized: (classData: Omit<ClassData, "id" | "students" | "created_at" | "updated_at">) => Promise<ClassData | null>;
+  addExamOptimized: (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at">) => Promise<Exam | null>;
 }
 
 const useDataStore = create<DataStore>((set, get) => ({
@@ -106,6 +109,39 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
+  // Add class without full data reload - returns the new class data
+  addClassOptimized: async (classData: Omit<ClassData, "id" | "students" | "created_at" | "updated_at">) => {
+    const id = `class_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    try {
+      await client.execute({
+        sql: "INSERT INTO classes (id, name, schedule, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        args: [id, classData.name, classData.schedule, now, now],
+      });
+
+      // Return the new class data without full reload
+      const newClass: ClassData = {
+        id,
+        name: classData.name,
+        schedule: classData.schedule,
+        students: [],
+        created_at: now,
+        updated_at: now,
+      };
+
+      // Update local state optimistically
+      const { classes } = get();
+      set({ classes: [...classes, newClass] });
+
+      return newClass;
+    } catch (err) {
+      console.error("Failed to add class:", err);
+      set({ error: "Failed to add class" });
+      return null;
+    }
+  },
+
   updateClass: async (classId: string, updatedData: Partial<ClassData>) => {
     const now = Math.floor(Date.now() / 1000);
 
@@ -181,6 +217,50 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
+  // Add student without full data reload - returns the new student data
+  addStudentOptimized: async (classId: string, studentName: string) => {
+    const id = `student_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    try {
+      await client.execute({
+        sql: "INSERT INTO students (id, class_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        args: [id, classId, studentName, now, now],
+      });
+
+      // Return the new student data without full reload
+      const newStudent = {
+        id,
+        class_id: classId,
+        name: studentName,
+        created_at: now,
+        updated_at: now,
+        exams: []
+      };
+
+      // Update local state optimistically
+      const { classes } = get();
+      const updatedClasses = classes.map(cls => {
+        if (cls.id === classId) {
+          return {
+            ...cls,
+            students: [...cls.students, newStudent]
+          };
+        }
+        return cls;
+      });
+
+      set({ classes: updatedClasses });
+      return newStudent;
+    } catch (err) {
+      console.error("Failed to add student:", err);
+      set({ error: "Failed to add student" });
+      return null;
+    }
+  },
+
   updateStudent: async (classId: string, studentId: string, newName: string) => {
     const now = Math.floor(Date.now() / 1000);
 
@@ -245,6 +325,79 @@ const useDataStore = create<DataStore>((set, get) => ({
     } catch (err) {
       console.error("Failed to add exam:", err);
       set({ error: "Failed to add exam" });
+    }
+  },
+
+  // Add exam without full data reload - returns the new exam data
+  addExamOptimized: async (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at">) => {
+    const id = `exam_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    try {
+      await client.execute({
+        sql: "INSERT INTO exams (id, student_id, class_id, exam_date, exam_date_key, status, score, juz_number, exam_type, notes, exam_day, exam_period, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        args: [
+          id,
+          studentId,
+          classId,
+          examData.exam_date,
+          examData.exam_date_key || null,
+          examData.status,
+          examData.score || null,
+          examData.juz_number || null,
+          examData.exam_type,
+          examData.notes || null,
+          examData.exam_day || null,
+          examData.exam_period || null,
+          now,
+          now,
+        ],
+      });
+
+      // Return the new exam data without full reload
+      const newExam: Exam = {
+        id,
+        student_id: studentId,
+        class_id: classId,
+        exam_date: examData.exam_date,
+        exam_date_key: examData.exam_date_key,
+        status: examData.status,
+        score: examData.score,
+        juz_number: examData.juz_number,
+        exam_type: examData.exam_type,
+        notes: examData.notes,
+        exam_day: examData.exam_day,
+        exam_period: examData.exam_period,
+        created_at: now,
+        updated_at: now,
+      };
+
+      // Update local state optimistically
+      const { classes } = get();
+      const updatedClasses = classes.map(cls => {
+        if (cls.id === classId) {
+          return {
+            ...cls,
+            students: cls.students.map(student => {
+              if (student.id === studentId) {
+                return {
+                  ...student,
+                  exams: [...(student.exams || []), newExam]
+                };
+              }
+              return student;
+            })
+          };
+        }
+        return cls;
+      });
+
+      set({ classes: updatedClasses });
+      return newExam;
+    } catch (err) {
+      console.error("Failed to add exam:", err);
+      set({ error: "Failed to add exam" });
+      return null;
     }
   },
 
