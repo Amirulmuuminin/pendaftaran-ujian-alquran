@@ -401,12 +401,12 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  // New function to check date conflicts
+  // New function to check date conflicts across ALL classes
   checkDateConflict: async (classId: string, dateKey: string, period: string) => {
     try {
       const result = await client.execute({
-        sql: "SELECT COUNT(*) as count FROM exams WHERE class_id = ? AND exam_date_key = ? AND exam_period = ?",
-        args: [classId, dateKey, period],
+        sql: "SELECT COUNT(*) as count FROM exams WHERE exam_date_key = ? AND exam_period = ?",
+        args: [dateKey, period],
       });
 
       return result.rows[0].count > 0;
@@ -465,10 +465,10 @@ const useDataStore = create<DataStore>((set, get) => ({
       const classData = get().findClass(classId);
       if (!classData) return [];
 
-      // Get all exams in the date range
+      // Get all exams in the date range across ALL classes to prevent cross-class conflicts
       const examsResult = await client.execute({
-        sql: "SELECT * FROM exams WHERE class_id = ? AND exam_date_key BETWEEN ? AND ? ORDER BY exam_date_key, exam_period",
-        args: [classId, startDate, endDate],
+        sql: "SELECT * FROM exams WHERE exam_date_key BETWEEN ? AND ? ORDER BY exam_date_key, exam_period",
+        args: [startDate, endDate],
       });
 
       const existingExams = examsResult.rows;
