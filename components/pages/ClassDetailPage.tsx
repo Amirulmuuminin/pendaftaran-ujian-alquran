@@ -63,7 +63,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
 
   // Get all exams for a class to check date conflicts
   const getAllClassExams = () => {
-    return classItem.students.flatMap(student => student.exams || []);
+    return classItem?.students?.flatMap(student => student.exams || []) || [];
   };
 
   if (loading) {

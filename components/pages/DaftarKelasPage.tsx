@@ -3,14 +3,10 @@ import { toast } from "sonner";
 import useDataStore from "../../store";
 import { ClassData, scheduleDays, scheduleSlots } from "../../types";
 import { Button, Dialog, Input } from "../ui";
-import { ClassCard } from "../features";
+import { ClassCardWithRouting } from "../features";
 import { Plus, Users, Clock } from "lucide-react";
 
-interface DaftarKelasPageProps {
-  onViewDetail: (classId: string) => void;
-}
-
-const DaftarKelasPage: React.FC<DaftarKelasPageProps> = ({ onViewDetail }) => {
+const DaftarKelasPage: React.FC = () => {
   const {
     classes,
     deleteClass,
@@ -38,7 +34,32 @@ const DaftarKelasPage: React.FC<DaftarKelasPageProps> = ({ onViewDetail }) => {
     setClassName(classItem.name);
     try {
       const scheduleData = JSON.parse(classItem.schedule);
-      setSelectedSchedule(scheduleData);
+
+      // Convert schedule format from database to UI format
+      // Database format: {"senin": ["Jam ke-1", "Jam ke-2"], ...}
+      // UI format: {"Senin": [1, 2], ...}
+      const convertedSchedule: Record<string, number[]> = {};
+
+      Object.keys(scheduleData).forEach(day => {
+        const dayKey = day.charAt(0).toUpperCase() + day.slice(1); // senin -> Senin
+        const timeSlots = scheduleData[day];
+
+        // Convert "Jam ke-X" strings to numbers
+        const convertedSlots = timeSlots.map((slot: string | number) => {
+          if (typeof slot === 'number') {
+            return slot;
+          } else if (typeof slot === 'string' && slot.includes('Jam ke-')) {
+            return parseInt(slot.replace('Jam ke-', ''));
+          } else {
+            // Fallback for unexpected formats
+            return parseInt(slot.toString());
+          }
+        });
+
+        convertedSchedule[dayKey] = convertedSlots;
+      });
+
+      setSelectedSchedule(convertedSchedule);
     } catch {
       setSelectedSchedule({});
     }
@@ -88,9 +109,26 @@ const DaftarKelasPage: React.FC<DaftarKelasPageProps> = ({ onViewDetail }) => {
       }
     }
 
+    // Convert UI format to database format before saving
+    // UI format: {"Senin": [1, 2], ...}
+    // Database format: {"senin": ["Jam ke-1", "Jam ke-2"], ...}
+    const convertedScheduleForDb: Record<string, string[]> = {};
+
+    Object.keys(selectedSchedule).forEach(day => {
+      const dayKey = day.toLowerCase(); // Senin -> senin
+      const timeSlots = selectedSchedule[day];
+
+      // Convert numbers to "Jam ke-X" strings
+      const convertedSlots = timeSlots.map((slot: number) => {
+        return `Jam ke-${slot}`;
+      });
+
+      convertedScheduleForDb[dayKey] = convertedSlots;
+    });
+
     const classData = {
       name: className.trim(),
-      schedule: JSON.stringify(selectedSchedule),
+      schedule: JSON.stringify(convertedScheduleForDb),
     };
 
     try {
@@ -145,12 +183,11 @@ const DaftarKelasPage: React.FC<DaftarKelasPageProps> = ({ onViewDetail }) => {
             Total {classes.length} kelas tersedia
           </p>
           {classes.map((classItem) => (
-            <ClassCard
+            <ClassCardWithRouting
               key={classItem.id}
               classItem={classItem}
               onEdit={handleEditClass}
               onDelete={handleDeleteClass}
-              onViewDetail={onViewDetail}
             />
           ))}
         </div>

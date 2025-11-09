@@ -60,7 +60,7 @@ const ExamDatePicker: React.FC<ExamDatePickerProps> = ({
 
     // Filter by day constraints (Selasa & Rabu only have 4 periods)
     const maxPeriod = (dayName === 'Selasa' || dayName === 'Rabu') ? 4 : 5;
-    const validPeriods = classDaySchedule.filter(slot => {
+    const validPeriods = classDaySchedule.filter((slot: string) => {
       const slotNumber = parseInt(slot.replace('Jam ke-', ''));
       return slotNumber <= maxPeriod;
     });
@@ -72,7 +72,7 @@ const ExamDatePicker: React.FC<ExamDatePickerProps> = ({
       .filter(Boolean);
 
     // Calculate available slots
-    const availableSlots = validPeriods.filter(period => !bookedPeriods.includes(period));
+    const availableSlots = validPeriods.filter((period: string) => !bookedPeriods.includes(period));
 
     return availableSlots.length;
   };
