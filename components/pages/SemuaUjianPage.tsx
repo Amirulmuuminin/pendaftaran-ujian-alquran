@@ -78,13 +78,13 @@ const SemuaUjianPage: React.FC = () => {
                     {date}
                   </h3>
                   <span className="text-sm text-gray-500">
-                    ({exams.length} ujian)
+                    ({(exams as typeof upcomingExams).length} ujian)
                   </span>
                 </div>
 
                 {/* Exams for this date */}
                 <div className="space-y-3 pl-6">
-                  {exams.map((exam) => (
+                  {(exams as typeof upcomingExams).map((exam) => (
                     <div
                       key={exam.id}
                       className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 transition-all duration-200 hover:shadow-md"

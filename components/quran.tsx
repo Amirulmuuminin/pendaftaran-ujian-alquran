@@ -53,7 +53,7 @@ const App: React.FC = () => {
         <main className="flex-1 pb-20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
             {activeTab === "list" && (
-              <DaftarKelasPage onViewDetail={handleViewDetail} />
+              <DaftarKelasPage />
             )}
             {activeTab === "exams" && <SemuaUjianPage />}
             {activeTab === "detail" && selectedClassId && (

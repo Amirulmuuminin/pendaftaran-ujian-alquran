@@ -10,7 +10,7 @@ interface DataStore extends DataContextType {
   getClassScheduleForDay: (classSchedule: string, dayName: string) => string[];
   addStudentOptimized: (classId: string, studentName: string) => Promise<any>;
   addClassOptimized: (classData: Omit<ClassData, "id" | "students" | "created_at" | "updated_at">) => Promise<ClassData | null>;
-  addExamOptimized: (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at">) => Promise<Exam | null>;
+  addExamOptimized: (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at" | "student_id" | "class_id">) => Promise<Exam | null>;
 }
 
 const useDataStore = create<DataStore>((set, get) => ({
@@ -296,7 +296,7 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  addExam: async (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at">) => {
+  addExam: async (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at" | "student_id" | "class_id">) => {
     const id = `exam_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Math.floor(Date.now() / 1000);
 
@@ -329,7 +329,7 @@ const useDataStore = create<DataStore>((set, get) => ({
   },
 
   // Add exam without full data reload - returns the new exam data
-  addExamOptimized: async (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at">) => {
+  addExamOptimized: async (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at" | "student_id" | "class_id">) => {
     const id = `exam_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Math.floor(Date.now() / 1000);
 
@@ -409,7 +409,7 @@ const useDataStore = create<DataStore>((set, get) => ({
         args: [dateKey, period],
       });
 
-      return result.rows[0].count > 0;
+      return Number(result.rows?.[0]?.count ?? 0) > 0;
     } catch (err) {
       console.error("Failed to check date conflict:", err);
       return false;

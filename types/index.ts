@@ -54,7 +54,7 @@ export interface DataContextType {
   addStudent: (classId: string, studentName: string) => Promise<void>;
   updateStudent: (classId: string, studentId: string, newName: string) => Promise<void>;
   deleteStudent: (classId: string, studentId: string) => Promise<void>;
-  addExam: (classId: string, studentId: string, examData: Omit<Exam, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  addExam: (classId: string, studentId: string, examData: Omit<Exam, 'id' | 'created_at' | 'updated_at' | 'student_id' | 'class_id'>) => Promise<void>;
   deleteExam: (classId: string, studentId: string, examId: string) => Promise<void>;
   checkDateConflict: (classId: string, dateKey: string, period: string) => Promise<boolean>;
   getExamsByDate: (classId: string, dateKey: string) => Promise<any[]>;
