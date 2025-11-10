@@ -5,6 +5,29 @@ import { BookOpen, Calendar, User } from "lucide-react";
 const SemuaUjianPage: React.FC = () => {
   const { classes, loading } = useDataStore();
 
+  // Helper function to sort exams by period (Jam ke-1, Jam ke-2, etc.)
+  const sortExamsByPeriod = (exams: any[]) => {
+    const periodOrder: Record<string, number> = {
+      'Jam ke-1': 1,
+      'Jam ke-2': 2,
+      'Jam ke-3': 3,
+      'Jam ke-4': 4,
+      'Jam ke-5': 5,
+    };
+
+    return exams.sort((a, b) => {
+      const aPeriod = periodOrder[a.exam_period] || 999;
+      const bPeriod = periodOrder[b.exam_period] || 999;
+
+      if (aPeriod !== bPeriod) {
+        return aPeriod - bPeriod;
+      }
+
+      // If same period, sort by class name alphabetically
+      return a.className.localeCompare(b.className);
+    });
+  };
+
   const upcomingExams = useMemo(() => {
     if (loading) return [];
 
@@ -28,7 +51,7 @@ const SemuaUjianPage: React.FC = () => {
   }, [classes, loading]);
 
   const examsByDate = useMemo(() => {
-    return upcomingExams.reduce((acc, exam) => {
+    const grouped = upcomingExams.reduce((acc, exam) => {
       const dateKey = new Date(exam.exam_date * 1000).toLocaleDateString('id-ID');
       if (!acc[dateKey]) {
         acc[dateKey] = [];
@@ -36,6 +59,13 @@ const SemuaUjianPage: React.FC = () => {
       acc[dateKey].push(exam);
       return acc;
     }, {} as Record<string, typeof upcomingExams>);
+
+    // Sort exams within each date by period and then by class name
+    Object.keys(grouped).forEach(dateKey => {
+      grouped[dateKey] = sortExamsByPeriod(grouped[dateKey]);
+    });
+
+    return grouped;
   }, [upcomingExams]);
 
   if (loading) {
@@ -105,6 +135,10 @@ const SemuaUjianPage: React.FC = () => {
                           </div>
 
                           <div className="space-y-1 text-sm text-gray-600">
+                            <div className="flex items-center">
+                              <Calendar size={14} className="mr-2 text-gray-400" />
+                              <span className="font-medium text-blue-600">{exam.exam_period}</span>
+                            </div>
                             <div className="flex items-center">
                               <User size={14} className="mr-2 text-gray-400" />
                               <span>
