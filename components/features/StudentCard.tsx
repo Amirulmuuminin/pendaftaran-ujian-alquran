@@ -1,7 +1,7 @@
 import React from "react";
 import { Student, Exam } from "../../types";
 import { Button } from "../ui";
-import { Calendar, Edit, Trash2, X, BookOpen } from "lucide-react";
+import { Plus, Edit, Trash2, BookOpen } from "lucide-react";
 
 interface StudentCardProps {
   student: Student;
@@ -9,6 +9,7 @@ interface StudentCardProps {
   onEditStudent: (student: Student) => void;
   onDeleteStudent: (studentId: string) => void;
   onDeleteExam: (examId: string) => Promise<void>;
+  onEditExam?: (exam: Exam) => void;
 }
 
 const StudentCard: React.FC<StudentCardProps> = ({
@@ -17,6 +18,7 @@ const StudentCard: React.FC<StudentCardProps> = ({
   onEditStudent,
   onDeleteStudent,
   onDeleteExam,
+  onEditExam,
 }) => {
   const exams = student.exams || [];
 
@@ -37,7 +39,7 @@ const StudentCard: React.FC<StudentCardProps> = ({
             className="p-2 rounded-lg hover:bg-green-50 transition-colors"
             title="Tambah Ujian"
           >
-            <Calendar size={16} className="text-green-600" />
+            <Plus size={16} className="text-green-600" />
           </button>
           <button
             onClick={() => onEditStudent(student)}
@@ -112,13 +114,24 @@ const StudentCard: React.FC<StudentCardProps> = ({
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => onDeleteExam(exam.id)}
-                  className="ml-2 p-1 rounded hover:bg-red-100 transition-colors"
-                  title="Hapus Ujian"
-                >
-                  <X size={14} className="text-red-500" />
-                </button>
+                <div className="flex ml-2">
+                  {onEditExam && (
+                    <button
+                      onClick={() => onEditExam(exam)}
+                      className="p-1 rounded hover:bg-blue-100 transition-colors"
+                      title="Edit Jadwal"
+                    >
+                      <Edit size={14} className="text-blue-500" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onDeleteExam(exam.id)}
+                    className="p-1 rounded hover:bg-red-100 transition-colors"
+                    title="Hapus Ujian"
+                  >
+                    <Trash2 size={14} className="text-red-500" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

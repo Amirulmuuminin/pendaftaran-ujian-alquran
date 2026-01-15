@@ -36,8 +36,10 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
   const [isExamRegistrationOpen, setIsExamRegistrationOpen] = useState(false);
+  const [isEditExamScheduleOpen, setIsEditExamScheduleOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [confirmDeleteClass, setConfirmDeleteClass] = useState(false);
   const [confirmDeleteStudentId, setConfirmDeleteStudentId] = useState<string | null>(null);
 
@@ -63,6 +65,9 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     { dateKey: "", period: "" },
     { dateKey: "", period: "" },
   ]);
+
+  // Form state for editing exam schedule
+  const [editExamNewSlot, setEditExamNewSlot] = useState<SlotSelection | undefined>(undefined);
 
   // Reset selected slot when juzPortion changes (student registration)
   useEffect(() => {
@@ -150,6 +155,47 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
       { dateKey: "", period: "" },
     ]);
     setIsExamRegistrationOpen(true);
+  };
+
+  const handleEditExamClick = (student: Student, exam: Exam) => {
+    setSelectedStudent(student);
+    setSelectedExam(exam);
+    setEditExamNewSlot(undefined);
+    setIsEditExamScheduleOpen(true);
+  };
+
+  const handleEditExamScheduleSubmit = async () => {
+    if (!selectedStudent || !selectedExam || !editExamNewSlot || !editExamNewSlot.dateKey || !editExamNewSlot.period) {
+      toast.error("Pilih jadwal baru terlebih dahulu.");
+      return;
+    }
+
+    try {
+      // First delete the old exam
+      await deleteExam(classId, selectedStudent.id, selectedExam.id);
+
+      // Create new exam with updated schedule
+      const newExamDate = new Date(editExamNewSlot.dateKey + 'T00:00:00');
+      const examData = {
+        exam_date: Math.floor(newExamDate.getTime() / 1000),
+        exam_date_key: editExamNewSlot.dateKey,
+        status: selectedExam.status,
+        score: selectedExam.score,
+        juz_number: selectedExam.juz_number,
+        exam_type: selectedExam.exam_type,
+        notes: selectedExam.notes,
+        exam_day: newExamDate.toLocaleDateString('id-ID', { weekday: 'long' }),
+        exam_period: editExamNewSlot.period,
+      };
+
+      await addExamOptimized(classId, selectedStudent.id, examData);
+      toast.success("Jadwal ujian berhasil diperbarui!");
+      setIsEditExamScheduleOpen(false);
+      setSelectedExam(null);
+      setEditExamNewSlot(undefined);
+    } catch (error) {
+      toast.error("Gagal memperbarui jadwal ujian. Silakan coba lagi.");
+    }
   };
 
   const handleStudentSubmit = async (e: React.FormEvent) => {
@@ -426,6 +472,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                   toast.error("Gagal menghapus ujian. Silakan coba lagi.");
                 }
               }}
+              onEditExam={(exam) => handleEditExamClick(student, exam)}
             />
           ))}
         </div>
@@ -726,6 +773,76 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Edit Exam Schedule Dialog */}
+      <Dialog
+        isOpen={isEditExamScheduleOpen}
+        onClose={() => {
+          setIsEditExamScheduleOpen(false);
+          setSelectedExam(null);
+          setEditExamNewSlot(undefined);
+        }}
+        title="Edit Jadwal Ujian"
+      >
+        <div className="space-y-4">
+          {/* Current Exam Info */}
+          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Murid:</span>
+              <span className="text-sm font-medium text-gray-900">{selectedStudent?.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Ujian:</span>
+              <span className="text-sm font-medium text-gray-900">
+                {selectedExam?.exam_type === '5juz' ? `5 Juz (${selectedExam?.juz_number})` : `Juz ${selectedExam?.juz_number || '?'}`}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Jadwal Saat Ini:</span>
+              <span className="text-sm font-medium text-gray-900">
+                {selectedExam?.exam_date_key && selectedExam?.exam_period ? (
+                  `${new Date(selectedExam.exam_date_key + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}, ${selectedExam.exam_period}`
+                ) : selectedExam?.exam_day && selectedExam?.exam_period ? (
+                  `${selectedExam.exam_day}, ${selectedExam.exam_period}`
+                ) : '-'}
+              </span>
+            </div>
+          </div>
+
+          {/* New Slot Selector */}
+          <ExamSlotSelector
+            selectedSlot={editExamNewSlot}
+            onSlotChange={setEditExamNewSlot}
+            examType={selectedExam?.exam_type === '5juz' ? '5juz' : 'non-5juz'}
+            classSchedule={classItem.schedule}
+            existingExams={getAllClassExams().filter(e => e.id !== selectedExam?.id)}
+            classId={classId}
+            juzPortion={selectedExam?.exam_type === '5juz' ? undefined : (selectedExam?.juz_number?.includes('1/2') || selectedExam?.juz_number?.includes('½') ? 'half' : 'full')}
+          />
+
+          <div className="pt-4 flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsEditExamScheduleOpen(false);
+                setSelectedExam(null);
+                setEditExamNewSlot(undefined);
+              }}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleEditExamScheduleSubmit}
+              className="flex-1"
+            >
+              Simpan Jadwal Baru
+            </Button>
+          </div>
+        </div>
       </Dialog>
 
       {/* Confirmation Dialogs */}

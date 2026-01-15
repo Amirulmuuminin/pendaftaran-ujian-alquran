@@ -33,6 +33,7 @@ interface DataStore extends DataContextType {
   addStudentOptimized: (classId: string, studentName: string) => Promise<any>;
   addClassOptimized: (classData: Omit<ClassData, "id" | "students" | "created_at" | "updated_at">) => Promise<ClassData | null>;
   addExamOptimized: (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at" | "student_id" | "class_id">) => Promise<Exam | null>;
+  updateExam: (classId: string, studentId: string, examId: string, examData: { status?: string; score?: string | null; examiner_name?: string | null; examiner_password?: string | null }) => Promise<void>;
 }
 
 const useDataStore = create<DataStore>((set, get) => ({
@@ -420,6 +421,48 @@ const useDataStore = create<DataStore>((set, get) => ({
       console.error("Failed to add exam:", err);
       set({ error: "Failed to add exam" });
       return null;
+    }
+  },
+
+  // Update exam with status, score, examiner_name, and examiner_password
+  updateExam: async (classId: string, studentId: string, examId: string, examData: { status?: string; score?: string | null; examiner_name?: string | null; examiner_password?: string | null }) => {
+    const now = Math.floor(Date.now() / 1000);
+
+    try {
+      const fields = [];
+      const values = [];
+
+      if (examData.status !== undefined) {
+        fields.push("status = ?");
+        values.push(examData.status);
+      }
+      if (examData.score !== undefined) {
+        fields.push("score = ?");
+        values.push(examData.score === '' ? null : examData.score);
+      }
+      if (examData.examiner_name !== undefined) {
+        fields.push("examiner_name = ?");
+        values.push(examData.examiner_name);
+      }
+      if (examData.examiner_password !== undefined) {
+        fields.push("examiner_password = ?");
+        values.push(examData.examiner_password);
+      }
+
+      fields.push("updated_at = ?");
+      values.push(now);
+      values.push(examId);
+
+      await client.execute({
+        sql: `UPDATE exams SET ${fields.join(", ")} WHERE id = ?`,
+        args: values,
+      });
+
+      // Reload data to reflect changes
+      await get().loadData();
+    } catch (err) {
+      console.error("Failed to update exam:", err);
+      set({ error: "Failed to update exam" });
     }
   },
 
