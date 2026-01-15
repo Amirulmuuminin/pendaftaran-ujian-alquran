@@ -24,12 +24,14 @@ export interface Exam {
   exam_date: number;
   exam_date_key?: string;
   status: string;
-  score?: number;
+  score?: string | null;
   juz_number?: string;
   exam_type: 'non-5juz' | '5juz';
   notes?: string;
   exam_day?: string;
   exam_period?: string;
+  examiner_name?: string | null;
+  examiner_password?: string | null;
   created_at: number;
   updated_at: number;
 }
