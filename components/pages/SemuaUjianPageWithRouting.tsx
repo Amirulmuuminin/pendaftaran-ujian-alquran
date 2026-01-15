@@ -33,8 +33,20 @@ const SemuaUjianPageWithRouting: React.FC = () => {
       });
     });
 
-    // Sort by exam date
-    return allExams.sort((a, b) => a.exam_date - b.exam_date);
+    // Helper to extract period number from "Jam ke-X"
+    const getPeriodNumber = (period: string): number => {
+      const match = period.match(/Jam ke-(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+
+    // Sort by exam date first, then by exam period
+    return allExams.sort((a, b) => {
+      const dateDiff = a.exam_date - b.exam_date;
+      if (dateDiff !== 0) return dateDiff;
+
+      // Same date, sort by period
+      return getPeriodNumber(a.exam_period) - getPeriodNumber(b.exam_period);
+    });
   }, [classes, loading]);
 
   const completedExams = useMemo(() => {
@@ -58,8 +70,20 @@ const SemuaUjianPageWithRouting: React.FC = () => {
       });
     });
 
-    // Sort by completion date (most recent first)
-    return allExams.sort((a, b) => b.updated_at - a.updated_at);
+    // Helper to extract period number from "Jam ke-X"
+    const getPeriodNumber = (period: string): number => {
+      const match = period.match(/Jam ke-(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+
+    // Sort by exam date first, then by exam period
+    return allExams.sort((a, b) => {
+      const dateDiff = a.exam_date - b.exam_date;
+      if (dateDiff !== 0) return dateDiff;
+
+      // Same date, sort by period
+      return getPeriodNumber(a.exam_period) - getPeriodNumber(b.exam_period);
+    });
   }, [classes, loading]);
 
   if (loading) {

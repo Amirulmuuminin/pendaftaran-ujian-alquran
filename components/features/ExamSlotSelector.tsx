@@ -10,12 +10,13 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
   classSchedule,
   existingExams = [],
   disabled = false,
-    classId,
+  classId,
+  juzPortion,
 }) => {
   const { getNearestAvailableSlots, findClass } = useDataStore();
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+  const [loading, setLoading] = useState(false);
+
   // Get class ID with priority logic
   const getClassId = () => {
     // Priority 1: Use classId from props (most reliable)
@@ -31,28 +32,36 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
     return null;
   };
 
-  // Load available slots on component mount and when essential props change
+  // Load available slots only when juzPortion is provided for non-5juz exams
   useEffect(() => {
-    loadAvailableSlots();
-  }, [examType, classId]); // Only reload when exam type or classId changes
+    const loadSlots = async () => {
+      // For non-5juz exams, wait for juzPortion to be selected
+      if (examType === 'non-5juz' && !juzPortion) {
+        setAvailableSlots([]);
+        setLoading(false);
+        return;
+      }
 
-  const loadAvailableSlots = async () => {
-    const classId = getClassId();
-    if (!classId) {
-      setLoading(false);
-      return;
-    }
+      const effectiveClassId = classId || getClassId();
+      if (!effectiveClassId) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      const slots = await getNearestAvailableSlots(classId, examType);
-      setAvailableSlots(slots);
-    } catch (error) {
-      console.error("Failed to load available slots:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        setLoading(true);
+        // Pass current values to avoid stale closure
+        const slots = await getNearestAvailableSlots(effectiveClassId, examType, undefined, juzPortion);
+        setAvailableSlots(slots);
+      } catch (error) {
+        console.error("Failed to load available slots:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSlots();
+  }, [examType, classId, juzPortion]); // Reload when exam type, classId, or juzPortion changes
 
   
   const handleSlotSelect = (slot: AvailableSlot) => {
@@ -78,6 +87,28 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
     }
     return "bg-white border-gray-200 hover:bg-gray-50";
   };
+
+  // Show message when juzPortion is not selected for non-5juz exams
+  if (examType === 'non-5juz' && !juzPortion) {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Pilih Jadwal Ujian
+        </label>
+        <div className="p-4 border border-gray-200 rounded-lg bg-blue-50">
+          <div className="flex items-center text-blue-800">
+            <Calendar className="w-5 h-5 mr-2" />
+            <div>
+              <p className="text-sm font-medium">Pilih jenis ujian terlebih dahulu</p>
+              <p className="text-xs mt-1">
+                Silakan pilih "1 Juz" atau "1/2 Juz" untuk melihat jadwal yang tersedia.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

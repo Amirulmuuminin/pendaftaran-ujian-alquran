@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import useDataStore from "../../store";
-import { Student, Exam, juzRanges, SlotSelection } from "../../types";
+import { Student, Exam, juzRanges, SlotSelection, JuzPortion } from "../../types";
+import { JUZ_PORTION_TYPES, HALF_JUZ_SUFFIX } from "../../types/constants";
 import { Button, Dialog, Input, ConfirmDialog } from "../ui";
 import { StudentCard, ExamScheduleSelector, ExamDatePicker, ExamSlotSelector, MultiSlotSelector } from "../features";
 import {
@@ -43,6 +44,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
   // Form states for student registration
   const [studentName, setStudentName] = useState("");
   const [registrationTypeTab, setRegistrationTypeTab] = useState<'non-5juz' | '5juz'>('non-5juz');
+  const [juzPortion, setJuzPortion] = useState<JuzPortion | undefined>(undefined);
   const [examDetail, setExamDetail] = useState("");
   const [juzRange, setJuzRange] = useState("");
   const [notes, setNotes] = useState("");
@@ -50,6 +52,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
 
   // Form states for exam registration (existing student)
   const [examTypeTab, setExamTypeTab] = useState<'non-5juz' | '5juz'>('non-5juz');
+  const [examJuzPortion, setExamJuzPortion] = useState<JuzPortion | undefined>(undefined);
   const [examRegSlot, setExamRegSlot] = useState<SlotSelection | undefined>();
 
   // Form states for 5 juz schedules (using SlotSelection)
@@ -60,6 +63,20 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     { dateKey: "", period: "" },
     { dateKey: "", period: "" },
   ]);
+
+  // Reset selected slot when juzPortion changes (student registration)
+  useEffect(() => {
+    if (selectedSlot) {
+      setSelectedSlot(undefined);
+    }
+  }, [juzPortion]);
+
+  // Reset examRegSlot when examJuzPortion changes (exam registration)
+  useEffect(() => {
+    if (examRegSlot) {
+      setExamRegSlot(undefined);
+    }
+  }, [examJuzPortion]);
 
   // Get all exams for a class to check date conflicts
   const getAllClassExams = () => {
@@ -92,6 +109,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     setStudentToEdit(null);
     setStudentName("");
     setRegistrationTypeTab('non-5juz');
+    setJuzPortion(undefined);
     setExamDetail("");
     setJuzRange("");
     setNotes("");
@@ -119,6 +137,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
   const handleAddExamClick = (student: Student) => {
     setSelectedStudent(student);
     setExamTypeTab('non-5juz');
+    setExamJuzPortion(undefined);
     setExamDetail("");
     setJuzRange("");
     setNotes("");
@@ -178,13 +197,20 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           if (registrationTypeTab === 'non-5juz') {
             // Daftarkan ujian non-5 juz untuk murid baru
             const examDate = new Date(selectedSlot!.dateKey + 'T00:00:00');
+
+            // Format juz_number berdasarkan pilihan
+            // Jika 1/2 juz, tambahkan suffix "- 1/2 juz" di akhir
+            const formattedJuzNumber = juzPortion === 'half'
+              ? `${examDetail.trim()}${HALF_JUZ_SUFFIX}`
+              : examDetail.trim();
+
             const examData = {
               exam_date: Math.floor(examDate.getTime() / 1000),
               exam_date_key: selectedSlot!.dateKey,
               status: 'scheduled',
               exam_type: registrationTypeTab,
               score: undefined,
-              juz_number: examDetail,
+              juz_number: formattedJuzNumber,
               notes: notes.trim() || undefined,
               exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
               exam_period: selectedSlot!.period,
@@ -219,6 +245,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
         setIsAddStudentOpen(false);
         setStudentName("");
         setRegistrationTypeTab('non-5juz');
+        setJuzPortion(undefined);
         setExamDetail("");
         setJuzRange("");
         setNotes("");
@@ -256,13 +283,20 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
         }
 
         const examDate = new Date(examRegSlot.dateKey + 'T00:00:00');
+
+        // Format juz_number berdasarkan pilihan
+        // Jika 1/2 juz, tambahkan suffix "- 1/2 juz" di akhir
+        const formattedJuzNumber = examJuzPortion === 'half'
+          ? `${examDetail.trim()}${HALF_JUZ_SUFFIX}`
+          : examDetail.trim();
+
         const examData = {
           exam_date: Math.floor(examDate.getTime() / 1000),
           exam_date_key: examRegSlot.dateKey,
           status: 'scheduled',
           exam_type: examTypeTab,
           score: undefined,
-          juz_number: examDetail,
+          juz_number: formattedJuzNumber,
           notes: notes.trim() || undefined,
           exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
           exam_period: examRegSlot.period,
@@ -306,6 +340,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
       setIsExamRegistrationOpen(false);
       setSelectedStudent(null);
       setExamTypeTab('non-5juz');
+      setExamJuzPortion(undefined);
       setExamDetail("");
       setJuzRange("");
       setNotes("");
@@ -404,6 +439,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           setIsEditStudentOpen(false);
           setStudentName("");
           setRegistrationTypeTab('non-5juz');
+          setJuzPortion(undefined);
           setExamDetail("");
           setJuzRange("");
           setNotes("");
@@ -452,11 +488,38 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                 {/* Tab Content */}
                 {registrationTypeTab === 'non-5juz' ? (
                   <div className="space-y-4">
+                    {/* Dropdown Jenis Ujian */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Jenis Ujian
+                      </label>
+                      <select
+                        value={juzPortion || ''}
+                        onChange={(e) => setJuzPortion(e.target.value as JuzPortion)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="">Pilih jenis ujian</option>
+                        {JUZ_PORTION_TYPES.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {juzPortion === 'half'
+                          ? '1/2 juz: 2 murid dapat mengambil jam yang sama'
+                          : juzPortion === 'full'
+                          ? '1 juz: 1 murid per jam'
+                          : 'Silakan pilih jenis ujian untuk melihat jadwal'}
+                      </p>
+                    </div>
+
                     <Input
                       label="Ujian"
                       value={examDetail}
                       onChange={(e) => setExamDetail(e.target.value)}
-                      placeholder="Contoh: 1/2 ke-1 juz 1"
+                      placeholder={juzPortion === 'half' ? 'Contoh: awal juz 5' : 'Contoh: Juz 1'}
                       required
                     />
                     <ExamSlotSelector
@@ -465,7 +528,8 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                       examType={registrationTypeTab}
                       classSchedule={classItem.schedule}
                       existingExams={getAllClassExams()}
-                                            classId={classId}
+                      classId={classId}
+                      juzPortion={registrationTypeTab === 'non-5juz' ? juzPortion : undefined}
                     />
                   </div>
                 ) : (
@@ -525,6 +589,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           setIsExamRegistrationOpen(false);
           setSelectedStudent(null);
           setExamTypeTab('non-5juz');
+          setExamJuzPortion(undefined);
           setExamDetail("");
           setJuzRange("");
           setNotes("");
@@ -570,11 +635,38 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
             {/* Tab Content */}
             {examTypeTab === 'non-5juz' ? (
               <div className="space-y-4">
+                {/* Dropdown Jenis Ujian */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Jenis Ujian
+                  </label>
+                  <select
+                    value={examJuzPortion || ''}
+                    onChange={(e) => setExamJuzPortion(e.target.value as JuzPortion)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Pilih jenis ujian</option>
+                    {JUZ_PORTION_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {examJuzPortion === 'half'
+                      ? '1/2 juz: 2 murid dapat mengambil jam yang sama'
+                      : examJuzPortion === 'full'
+                      ? '1 juz: 1 murid per jam'
+                      : 'Silakan pilih jenis ujian untuk melihat jadwal'}
+                  </p>
+                </div>
+
                 <Input
                   label="Ujian"
                   value={examDetail}
                   onChange={(e) => setExamDetail(e.target.value)}
-                  placeholder="Contoh: 1/2 ke-1 juz 1"
+                  placeholder={examJuzPortion === 'half' ? 'Contoh: awal juz 5' : 'Contoh: Juz 1'}
                   required
                 />
                 <ExamSlotSelector
@@ -583,7 +675,8 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                   examType={examTypeTab}
                   classSchedule={classItem.schedule}
                   existingExams={selectedStudent?.exams || []}
-                                    classId={classId}
+                  classId={classId}
+                  juzPortion={examTypeTab === 'non-5juz' ? examJuzPortion : undefined}
                 />
               </div>
             ) : (

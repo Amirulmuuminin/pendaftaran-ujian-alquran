@@ -27,9 +27,7 @@ export const LOCAL_STORAGE_KEY = "examRecapAppData";
 export const EXAM_TYPES = [
   "Ziyadah",
   "Murojaah",
-  "Tasmik",
-  "Mutanajiyah",
-  "Lainnya"
+  "Tasmik"
 ];
 
 // Subject types
@@ -63,9 +61,21 @@ export const SUBJECT_TYPES = [
   "Juz 27",
   "Juz 28",
   "Juz 29",
-  "Juz 30",
-  "Surah Pilihan",
-  "Doa",
-  "Tajwid",
-  "Lainnya"
+  "Juz 30"
 ];
+
+// Keywords untuk deteksi 1/2 juz dari juz_number text
+// Hanya mendeteksi "1/2" atau "½" TANPA diikuti kata "juz"
+export const HALF_JUZ_KEYWORDS = [
+  "1/2",
+  "½",
+];
+
+// Tipe porsi juz untuk dropdown
+export const JUZ_PORTION_TYPES = [
+  { value: "full", label: "1 Juz" },
+  { value: "half", label: "1/2 Juz" },
+];
+
+// Suffix untuk 1/2 juz
+export const HALF_JUZ_SUFFIX = " - 1/2 juz";

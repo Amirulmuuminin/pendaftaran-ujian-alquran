@@ -1,12 +1,34 @@
 "use client";
 import { create } from 'zustand';
 import { ClassData, Exam, DataContextType, AvailableSlot } from '../types';
+import { HALF_JUZ_SUFFIX } from '../types/constants';
 import client from '../lib/db';
+
+// Helper function untuk mendeteksi apakah ujian adalah 1/2 juz
+// Mendeteksi: (1) teks yang berakhiran dengan "- 1/2 juz", atau (2) mengandung "1/2" atau "½" TANPA diikuti langsung oleh "juz"
+const isHalfJuz = (juzNumber: any): boolean => {
+  if (!juzNumber) return false;
+  const text = String(juzNumber).trim();
+
+  // Cek 1: Jika berakhiran dengan suffix "- 1/2 juz" atau variasinya
+  if (text.endsWith('- 1/2 juz') || text.endsWith('-½ juz') || text.endsWith(HALF_JUZ_SUFFIX.trim())) {
+    return true;
+  }
+
+  // Cek 2: Cari pola "1/2" atau "½" yang TIDAK diikuti langsung oleh "juz"
+  // Pattern: mencocokkan "1/2" atau "½" yang diikuti oleh:
+  // - end of string, atau
+  // - karakter BUKAN huruf (spasi, tanda baca, dll), atau
+  // - spasi lalu kata lain selain "juz"
+  const halfJuzPattern = /(?:1\/2|½)(?:\s+(?!juz\b)|\s*$|[^a-zA-Z])/gi;
+
+  return halfJuzPattern.test(text);
+};
 
 interface DataStore extends DataContextType {
   loadData: () => Promise<void>;
-  getNearestAvailableSlots: (classId: string, examType: 'non-5juz' | '5juz', limit?: number) => Promise<AvailableSlot[]>;
-  getAvailableSlotsForDateRange: (classId: string, startDate: string, endDate: string) => Promise<AvailableSlot[]>;
+  getNearestAvailableSlots: (classId: string, examType: 'non-5juz' | '5juz', limit?: number, juzPortion?: 'full' | 'half') => Promise<AvailableSlot[]>;
+  getAvailableSlotsForDateRange: (classId: string, startDate: string, endDate: string, juzPortion?: 'full' | 'half') => Promise<AvailableSlot[]>;
   getClassScheduleForDay: (classSchedule: string, dayName: string) => string[];
   addStudentOptimized: (classId: string, studentName: string) => Promise<any>;
   addClassOptimized: (classData: Omit<ClassData, "id" | "students" | "created_at" | "updated_at">) => Promise<ClassData | null>;
@@ -401,15 +423,54 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  // New function to check date conflicts across ALL classes
-  checkDateConflict: async (classId: string, dateKey: string, period: string) => {
+  // New function to check date conflicts across ALL classes with 1/2 juz support
+  checkDateConflict: async (classId: string, dateKey: string, period: string, juzNumber?: string) => {
     try {
+      // Get all exams for this slot
       const result = await client.execute({
-        sql: "SELECT COUNT(*) as count FROM exams WHERE exam_date_key = ? AND exam_period = ?",
+        sql: "SELECT * FROM exams WHERE exam_date_key = ? AND exam_period = ?",
         args: [dateKey, period],
       });
 
-      return Number(result.rows?.[0]?.count ?? 0) > 0;
+      const existingExams = result.rows || [];
+
+      // Cek apakah ini ujian 1/2 juz
+      const isNewHalfJuz = isHalfJuz(juzNumber);
+
+      // Hitung berapa ujian 1 juz vs 1/2 juz yang sudah ada
+      let fullJuzCount = 0;
+      let halfJuzCount = 0;
+
+      for (const exam of existingExams) {
+        if (exam.exam_type === '5juz') {
+          // 5juz selalu 1 murid per slot, conflict
+          return true;
+        }
+        if (isHalfJuz(exam.juz_number)) {
+          halfJuzCount++;
+        } else {
+          fullJuzCount++;
+        }
+      }
+
+      // Logic:
+      // - Jika ada 1 juz yang sudah booking → conflict
+      // - Jika ada 2 half juz yang sudah booking → conflict
+      // - Jika ada 1 half juz yang sudah booking:
+      //   - Boleh jika yang baru juga half juz
+      //   - Conflict jika yang baru full juz
+
+      if (fullJuzCount > 0) return true; // Ada full juz, conflict
+      if (halfJuzCount >= 2) return true; // Sudah 2 half juz, penuh
+
+      // 1 half juz sudah ada
+      if (halfJuzCount === 1) {
+        // Hanya boleh tambah jika yang baru juga half juz
+        return !isNewHalfJuz;
+      }
+
+      // Slot kosong, selalu available
+      return false;
     } catch (err) {
       console.error("Failed to check date conflict:", err);
       return false;
@@ -458,8 +519,8 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  // Get available slots for a specific date range
-  getAvailableSlotsForDateRange: async (classId: string, startDate: string, endDate: string) => {
+  // Get available slots for a specific date range with 1/2 juz support
+  getAvailableSlotsForDateRange: async (classId: string, startDate: string, endDate: string, juzPortion?: 'full' | 'half') => {
     try {
       // Get class data
       const classData = get().findClass(classId);
@@ -493,15 +554,49 @@ const useDataStore = create<DataStore>((set, get) => ({
           return slotNumber <= maxPeriod;
         });
 
-        // Find which periods are already booked
-        const bookedPeriods = existingExams
-          .filter(exam => exam.exam_date_key === dateKey)
-          .map(exam => exam.exam_period)
-          .filter(Boolean);
+        // Get exams for this specific date
+        const dateExams = existingExams.filter(exam => exam.exam_date_key === dateKey);
+
+        // Track period capacity based on what we're booking
+        const fullyBookedPeriods = new Set<string>();
+        const halfJuzPeriodCount: Record<string, number> = {};
+
+        for (const exam of dateExams) {
+          if (!exam.exam_period) continue;
+
+          const periodStr = String(exam.exam_period);
+
+          // 5juz always fully books a slot (incompatible with everything)
+          if (exam.exam_type === '5juz') {
+            fullyBookedPeriods.add(periodStr);
+            continue;
+          }
+
+          // Non-5juz exams
+          const examIsHalfJuz = isHalfJuz(exam.juz_number);
+
+          if (juzPortion === 'half') {
+            // Booking 1/2 juz: can share with another 1/2 juz
+            if (examIsHalfJuz) {
+              halfJuzPeriodCount[periodStr] = (halfJuzPeriodCount[periodStr] || 0) + 1;
+              // 2 half juz = fully booked
+              if (halfJuzPeriodCount[periodStr] >= 2) {
+                fullyBookedPeriods.add(periodStr);
+              }
+            } else {
+              // 1 juz fully books the slot (incompatible with 1/2 juz)
+              fullyBookedPeriods.add(periodStr);
+            }
+          } else {
+            // Booking 1 juz (or unspecified): any existing exam fully books the slot
+            fullyBookedPeriods.add(periodStr);
+          }
+        }
 
         // Generate available slots for this day
         for (const period of validPeriods) {
-          if (!bookedPeriods.includes(period)) {
+          // Slot is available if not fully booked
+          if (!fullyBookedPeriods.has(period)) {
             const slotDate = new Date(currentDate);
             const distance = Math.ceil((slotDate.getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
 
@@ -525,7 +620,7 @@ const useDataStore = create<DataStore>((set, get) => ({
   },
 
   // Get slots from 5 different nearest dates (not consecutive)
-  getNearestAvailableSlots: async (classId: string, examType: 'non-5juz' | '5juz', limit?: number) => {
+  getNearestAvailableSlots: async (classId: string, examType: 'non-5juz' | '5juz', limit?: number, juzPortion?: 'full' | 'half') => {
     try {
       const targetDates = examType === '5juz' ? 10 : 5;
       const maxSearchDays = 30;
@@ -548,7 +643,8 @@ const useDataStore = create<DataStore>((set, get) => ({
         const daySlots = await get().getAvailableSlotsForDateRange(
           classId,
           dateKey,
-          dateKey
+          dateKey,
+          juzPortion
         );
 
         // If this date has available slots, add all slots from this date

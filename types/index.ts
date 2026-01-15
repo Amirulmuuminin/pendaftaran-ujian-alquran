@@ -101,10 +101,19 @@ export interface ExamSlotSelectorProps {
   existingExams?: Exam[];
   disabled?: boolean;
   classId: string; // Required for proper slot discovery
+  juzPortion?: JuzPortion; // For non-5juz exams: 'full' or 'half'
 }
 
 export interface MultiSlotSelectorProps extends Omit<ExamSlotSelectorProps, 'selectedSlot' | 'onSlotChange'> {
   selectedSlots: SlotSelection[];
   onSlotsChange: (slots: SlotSelection[]) => void;
   requiredCount: number; // 5 for 5juz exams
+}
+
+// Juz portion types for non-5juz exams
+export type JuzPortion = 'full' | 'half';
+
+export interface JuzPortionOption {
+  value: JuzPortion;
+  label: string;
 }

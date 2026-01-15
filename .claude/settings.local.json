@@ -14,7 +14,8 @@
       "Bash(move fix-schedule.js tests )",
       "Bash(move debug-db.js tests )",
       "Bash(move:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(command -v:*)"
     ],
     "deny": [],
     "ask": []
