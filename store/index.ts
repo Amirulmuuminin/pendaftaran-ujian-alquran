@@ -739,10 +739,19 @@ const useDataStore = create<DataStore>((set, get) => ({
           );
 
           // Get exams for this examiner on this date
-          const dateExams = existingExams.filter(exam =>
-            exam.exam_date_key === dateKey &&
-            exam.examiner_name === penguji.name
-          );
+          // For Ustadz Nawir (default examiner), also include exams with examiner_name = NULL
+          const dateExams = existingExams.filter(exam => {
+            if (exam.exam_date_key !== dateKey) return false;
+
+            // Ustadz Nawir is the default examiner - include NULL/empty examiner_name
+            if (penguji.name === 'Ustadz Nawir') {
+              return exam.examiner_name === 'Ustadz Nawir' ||
+                     exam.examiner_name === null ||
+                     exam.examiner_name === '';
+            }
+
+            return exam.examiner_name === penguji.name;
+          });
 
           // Calculate slot availability (same 1/2 juz logic, but per examiner)
           const fullyBookedPeriods = new Set<string>();

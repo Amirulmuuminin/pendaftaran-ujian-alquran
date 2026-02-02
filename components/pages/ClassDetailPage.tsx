@@ -593,24 +593,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                       existingExams={getAllClassExams()}
                       classId={classId}
                       juzPortion={registrationTypeTab === 'non-5juz' ? juzPortion : undefined}
-                      examinerId={selectedPenguji}
                     />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Pilih Penguji
-                      </label>
-                      <select
-                        value={selectedPenguji || ''}
-                        onChange={(e) => setSelectedPenguji(e.target.value || undefined)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">Pilih penguji</option>
-                        {pengujis.map((penguji) => (
-                          <option key={penguji.id} value={penguji.id}>{penguji.name}</option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -758,24 +741,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                   existingExams={selectedStudent?.exams || []}
                   classId={classId}
                   juzPortion={examTypeTab === 'non-5juz' ? examJuzPortion : undefined}
-                  examinerId={examRegPenguji}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pilih Penguji
-                  </label>
-                  <select
-                    value={examRegPenguji || ''}
-                    onChange={(e) => setExamRegPenguji(e.target.value || undefined)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Pilih penguji</option>
-                    {pengujis.map((penguji) => (
-                      <option key={penguji.id} value={penguji.id}>{penguji.name}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
             ) : (
               <div className="space-y-4">

@@ -18,7 +18,10 @@
       "Bash(command -v:*)",
       "Bash(npx tsx:*)",
       "Bash(npx dotenv-cli -e .env -- npx tsx scripts/create-penguji-table.ts:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(npx dotenv-cli:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []
