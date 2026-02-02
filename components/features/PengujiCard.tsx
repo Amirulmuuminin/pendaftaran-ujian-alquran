@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Penguji } from "../../types";
-import { Edit, Trash2, User, Calendar } from "lucide-react";
+import { Edit, Trash2, User, Calendar, Award } from "lucide-react";
 
 interface PengujiCardProps {
   penguji: Penguji;
@@ -25,6 +25,15 @@ export const PengujiCard: React.FC<PengujiCardProps> = ({ penguji, onEdit, onDel
     }
   }, [penguji.schedule]);
 
+  const supportedTypes = React.useMemo(() => {
+    try {
+      const types = JSON.parse(penguji.supported_exam_types);
+      return types;
+    } catch {
+      return ['full', 'half'];
+    }
+  }, [penguji.supported_exam_types]);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       <div className="flex justify-between items-start mb-3">
@@ -41,6 +50,20 @@ export const PengujiCard: React.FC<PengujiCardProps> = ({ penguji, onEdit, onDel
           </button>
         </div>
       </div>
+
+      {/* Supported exam types */}
+      <div className="flex items-center gap-2 mb-3">
+        <Award size={14} className="text-purple-500" />
+        <div className="flex gap-1">
+          {supportedTypes.includes('full') && (
+            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">1 Juz</span>
+          )}
+          {supportedTypes.includes('half') && (
+            <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs rounded-full">1/2 Juz</span>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-start gap-2 text-sm text-gray-600">
         <Calendar size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
         <div className="space-y-1">

@@ -40,6 +40,7 @@ export interface Penguji {
   id: string;
   name: string;
   schedule: string; // JSON string
+  supported_exam_types: string; // JSON string array of 'full' and/or 'half'
   created_at: number;
   updated_at: number;
 }

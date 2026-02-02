@@ -38,7 +38,7 @@ interface DataStore extends DataContextType {
   pengujis: Penguji[];
   loadPengujis: () => Promise<void>;
   addPenguji: (pengujiData: Omit<Penguji, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
-  updatePenguji: (pengujiId: string, updatedData: Partial<Pick<Penguji, 'name' | 'schedule'>>) => Promise<void>;
+  updatePenguji: (pengujiId: string, updatedData: Partial<Pick<Penguji, 'name' | 'schedule' | 'supported_exam_types'>>) => Promise<void>;
   deletePenguji: (pengujiId: string) => Promise<void>;
   getPengujiScheduleForDay: (pengujiSchedule: string, dayName: string) => string[];
 }
@@ -123,6 +123,7 @@ const useDataStore = create<DataStore>((set, get) => ({
         id: row.id,
         name: row.name,
         schedule: row.schedule,
+        supported_exam_types: row.supported_exam_types || '["full","half"]',
         created_at: row.created_at,
         updated_at: row.updated_at,
       }));
@@ -499,6 +500,7 @@ const useDataStore = create<DataStore>((set, get) => ({
           id: row.id,
           name: row.name,
           schedule: row.schedule,
+          supported_exam_types: row.supported_exam_types || '["full","half"]',
           created_at: row.created_at,
           updated_at: row.updated_at,
         }))
@@ -514,8 +516,8 @@ const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       await client.execute({
-        sql: "INSERT INTO penguji (id, name, schedule, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-        args: [id, pengujiData.name, pengujiData.schedule, now, now],
+        sql: "INSERT INTO penguji (id, name, schedule, supported_exam_types, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        args: [id, pengujiData.name, pengujiData.schedule, pengujiData.supported_exam_types, now, now],
       });
       await get().loadPengujis();
     } catch (err) {
@@ -538,6 +540,10 @@ const useDataStore = create<DataStore>((set, get) => ({
       if (updatedData.schedule !== undefined) {
         fields.push("schedule = ?");
         values.push(updatedData.schedule);
+      }
+      if (updatedData.supported_exam_types !== undefined) {
+        fields.push("supported_exam_types = ?");
+        values.push(updatedData.supported_exam_types);
       }
 
       fields.push("updated_at = ?");
@@ -693,9 +699,34 @@ const useDataStore = create<DataStore>((set, get) => ({
       if (!classData) return [];
 
       const pengujis = get().pengujis;
+
+      // Filter examiners by their supported exam types
+      let eligiblePengujis = pengujis;
+      if (juzPortion === 'full') {
+        // Only show examiners who support full juz
+        eligiblePengujis = pengujis.filter(p => {
+          try {
+            const supported = JSON.parse(p.supported_exam_types);
+            return supported.includes('full');
+          } catch {
+            return true; // Default to include if parse fails
+          }
+        });
+      } else if (juzPortion === 'half') {
+        // Only show examiners who support half juz
+        eligiblePengujis = pengujis.filter(p => {
+          try {
+            const supported = JSON.parse(p.supported_exam_types);
+            return supported.includes('half');
+          } catch {
+            return true; // Default to include if parse fails
+          }
+        });
+      }
+
       const targetPengujis = examinerId
-        ? pengujis.filter(p => p.id === examinerId)
-        : pengujis;
+        ? eligiblePengujis.filter(p => p.id === examinerId)
+        : eligiblePengujis;
 
       if (targetPengujis.length === 0) return [];
 

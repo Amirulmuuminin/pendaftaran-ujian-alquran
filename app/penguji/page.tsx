@@ -11,6 +11,8 @@ import {
 import { Plus, UserPlus, X, List, BookOpen, UserCheck } from "lucide-react";
 import { Dialog } from "../../components/ui";
 
+type ExamType = 'full' | 'half';
+
 export default function PengujiPage() {
   const router = useRouter();
   const { pengujis, loadPengujis, addPenguji, updatePenguji, deletePenguji } =
@@ -21,6 +23,7 @@ export default function PengujiPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [pengujiName, setPengujiName] = useState("");
   const [pengujiSchedule, setPengujiSchedule] = useState("{}");
+  const [supportedExamTypes, setSupportedExamTypes] = useState<ExamType[]>(['full', 'half']);
 
   useEffect(() => {
     loadPengujis().then(() => setLoading(false));
@@ -30,6 +33,7 @@ export default function PengujiPage() {
     setEditingPenguji(null);
     setPengujiName("");
     setPengujiSchedule("{}");
+    setSupportedExamTypes(['full', 'half']);
     setIsDialogOpen(true);
   };
 
@@ -37,6 +41,12 @@ export default function PengujiPage() {
     setEditingPenguji(penguji);
     setPengujiName(penguji.name);
     setPengujiSchedule(penguji.schedule);
+    try {
+      const types = JSON.parse(penguji.supported_exam_types);
+      setSupportedExamTypes(types);
+    } catch {
+      setSupportedExamTypes(['full', 'half']);
+    }
     setIsDialogOpen(true);
   };
 
@@ -46,18 +56,24 @@ export default function PengujiPage() {
       toast.error("Nama penguji wajib diisi.");
       return;
     }
+    if (supportedExamTypes.length === 0) {
+      toast.error("Pilih minimal satu tipe ujian yang dapat ditangani.");
+      return;
+    }
 
     try {
       if (editingPenguji) {
         await updatePenguji(editingPenguji.id, {
           name: pengujiName.trim(),
           schedule: pengujiSchedule,
+          supported_exam_types: JSON.stringify(supportedExamTypes),
         });
         toast.success("Penguji berhasil diperbarui!");
       } else {
         await addPenguji({
           name: pengujiName.trim(),
           schedule: pengujiSchedule,
+          supported_exam_types: JSON.stringify(supportedExamTypes),
         });
         toast.success("Penguji berhasil ditambahkan!");
       }
@@ -155,6 +171,44 @@ export default function PengujiPage() {
               schedule={pengujiSchedule}
               onScheduleChange={setPengujiSchedule}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipe Ujian yang Dapat Ditangani
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={supportedExamTypes.includes('full')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSupportedExamTypes([...supportedExamTypes, 'full']);
+                    } else {
+                      setSupportedExamTypes(supportedExamTypes.filter(t => t !== 'full'));
+                    }
+                  }}
+                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-700">1 Juz (Full)</span>
+              </label>
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={supportedExamTypes.includes('half')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSupportedExamTypes([...supportedExamTypes, 'half']);
+                    } else {
+                      setSupportedExamTypes(supportedExamTypes.filter(t => t !== 'half'));
+                    }
+                  }}
+                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-700">1/2 Juz</span>
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
