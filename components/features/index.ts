@@ -8,3 +8,5 @@ export { default as ExamScheduleSelector } from "./ExamScheduleSelector";
 export { default as ExamDatePicker } from "./ExamDatePicker";
 export { default as ExamSlotSelector } from "./ExamSlotSelector";
 export { default as MultiSlotSelector } from "./MultiSlotSelector";
+export { default as PengujiCard } from "./PengujiCard";
+export { PengujiScheduleSelector } from "./PengujiScheduleSelector";

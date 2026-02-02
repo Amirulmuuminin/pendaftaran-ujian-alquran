@@ -36,6 +36,14 @@ export interface Exam {
   updated_at: number;
 }
 
+export interface Penguji {
+  id: string;
+  name: string;
+  schedule: string; // JSON string
+  created_at: number;
+  updated_at: number;
+}
+
 export interface ClassData {
   id: string;
   name: string;
@@ -88,6 +96,8 @@ export interface AvailableSlot {
   dayName: string; // "Senin", "Selasa", etc.
   displayText: string; // "Senin, 6 Des - Jam 1"
   distance: number; // days from today
+  examinerId?: string;
+  examinerName?: string;
 }
 
 export interface SlotSelection {
@@ -104,6 +114,7 @@ export interface ExamSlotSelectorProps {
   disabled?: boolean;
   classId: string; // Required for proper slot discovery
   juzPortion?: JuzPortion; // For non-5juz exams: 'full' or 'half'
+  examinerId?: string; // Filter slots by examiner
 }
 
 export interface MultiSlotSelectorProps extends Omit<ExamSlotSelectorProps, 'selectedSlot' | 'onSlotChange'> {

@@ -1,6 +1,6 @@
 "use client";
 import { create } from 'zustand';
-import { ClassData, Exam, DataContextType, AvailableSlot } from '../types';
+import { ClassData, Exam, DataContextType, AvailableSlot, Penguji } from '../types';
 import { HALF_JUZ_SUFFIX } from '../types/constants';
 import client from '../lib/db';
 
@@ -27,17 +27,25 @@ const isHalfJuz = (juzNumber: any): boolean => {
 
 interface DataStore extends DataContextType {
   loadData: () => Promise<void>;
-  getNearestAvailableSlots: (classId: string, examType: 'non-5juz' | '5juz', limit?: number, juzPortion?: 'full' | 'half') => Promise<AvailableSlot[]>;
-  getAvailableSlotsForDateRange: (classId: string, startDate: string, endDate: string, juzPortion?: 'full' | 'half') => Promise<AvailableSlot[]>;
+  getNearestAvailableSlots: (classId: string, examType: 'non-5juz' | '5juz', limit?: number, juzPortion?: 'full' | 'half', examinerId?: string) => Promise<AvailableSlot[]>;
+  getAvailableSlotsForDateRange: (classId: string, startDate: string, endDate: string, juzPortion?: 'full' | 'half', examinerId?: string) => Promise<AvailableSlot[]>;
   getClassScheduleForDay: (classSchedule: string, dayName: string) => string[];
   addStudentOptimized: (classId: string, studentName: string) => Promise<any>;
   addClassOptimized: (classData: Omit<ClassData, "id" | "students" | "created_at" | "updated_at">) => Promise<ClassData | null>;
   addExamOptimized: (classId: string, studentId: string, examData: Omit<Exam, "id" | "created_at" | "updated_at" | "student_id" | "class_id">) => Promise<Exam | null>;
   updateExam: (classId: string, studentId: string, examId: string, examData: { status?: string; score?: string | null; examiner_name?: string | null; examiner_password?: string | null }) => Promise<void>;
+  // Examiner management
+  pengujis: Penguji[];
+  loadPengujis: () => Promise<void>;
+  addPenguji: (pengujiData: Omit<Penguji, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updatePenguji: (pengujiId: string, updatedData: Partial<Pick<Penguji, 'name' | 'schedule'>>) => Promise<void>;
+  deletePenguji: (pengujiId: string) => Promise<void>;
+  getPengujiScheduleForDay: (pengujiSchedule: string, dayName: string) => string[];
 }
 
 const useDataStore = create<DataStore>((set, get) => ({
   classes: [],
+  pengujis: [],
   loading: true,
   error: null,
 
@@ -58,6 +66,11 @@ const useDataStore = create<DataStore>((set, get) => ({
       // Fetch exams
       const examsResult = await client.execute(
         "SELECT * FROM exams ORDER BY exam_date"
+      );
+
+      // Fetch pengujis
+      const pengujisResult = await client.execute(
+        "SELECT * FROM penguji ORDER BY name"
       );
 
       // Process data into ClassData format
@@ -105,7 +118,16 @@ const useDataStore = create<DataStore>((set, get) => ({
         }
       );
 
-      set({ classes: classesData, loading: false });
+      // Process pengujis
+      const pengujis: Penguji[] = pengujisResult.rows.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        schedule: row.schedule,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      }));
+
+      set({ classes: classesData, pengujis, loading: false });
     } catch (err) {
       console.error("Failed to load data from Turso:", err);
       set({ error: "Failed to load data. Check console.", loading: false });
@@ -468,6 +490,105 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
+  // Examiner management methods
+  loadPengujis: async () => {
+    try {
+      const result = await client.execute("SELECT * FROM penguji ORDER BY name");
+      set({
+        pengujis: result.rows.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          schedule: row.schedule,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        }))
+      });
+    } catch (err) {
+      console.error("Failed to load pengujis:", err);
+    }
+  },
+
+  addPenguji: async (pengujiData) => {
+    const id = `penguji_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    try {
+      await client.execute({
+        sql: "INSERT INTO penguji (id, name, schedule, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        args: [id, pengujiData.name, pengujiData.schedule, now, now],
+      });
+      await get().loadPengujis();
+    } catch (err) {
+      console.error("Failed to add penguji:", err);
+      set({ error: "Failed to add penguji" });
+    }
+  },
+
+  updatePenguji: async (pengujiId, updatedData) => {
+    const now = Math.floor(Date.now() / 1000);
+
+    try {
+      const fields = [];
+      const values = [];
+
+      if (updatedData.name !== undefined) {
+        fields.push("name = ?");
+        values.push(updatedData.name);
+      }
+      if (updatedData.schedule !== undefined) {
+        fields.push("schedule = ?");
+        values.push(updatedData.schedule);
+      }
+
+      fields.push("updated_at = ?");
+      values.push(now);
+      values.push(pengujiId);
+
+      await client.execute({
+        sql: `UPDATE penguji SET ${fields.join(", ")} WHERE id = ?`,
+        args: values,
+      });
+
+      await get().loadPengujis();
+    } catch (err) {
+      console.error("Failed to update penguji:", err);
+      set({ error: "Failed to update penguji" });
+    }
+  },
+
+  deletePenguji: async (pengujiId) => {
+    try {
+      // First unlink exams from this examiner
+      await client.execute({
+        sql: "UPDATE exams SET examiner_name = NULL WHERE examiner_name = (SELECT name FROM penguji WHERE id = ?)",
+        args: [pengujiId],
+      });
+
+      // Then delete the examiner
+      await client.execute({
+        sql: "DELETE FROM penguji WHERE id = ?",
+        args: [pengujiId],
+      });
+
+      await get().loadPengujis();
+    } catch (err) {
+      console.error("Failed to delete penguji:", err);
+      set({ error: "Failed to delete penguji" });
+    }
+  },
+
+  getPengujiScheduleForDay: (pengujiSchedule: string, dayName: string) => {
+    if (!pengujiSchedule) return [];
+
+    try {
+      const schedule = JSON.parse(pengujiSchedule);
+      const dayKey = dayName.toLowerCase();
+      return schedule[dayKey] || [];
+    } catch {
+      return [];
+    }
+  },
+
   // New function to check date conflicts across ALL classes with 1/2 juz support
   checkDateConflict: async (classId: string, dateKey: string, period: string, juzNumber?: string) => {
     try {
@@ -564,12 +685,19 @@ const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  // Get available slots for a specific date range with 1/2 juz support
-  getAvailableSlotsForDateRange: async (classId: string, startDate: string, endDate: string, juzPortion?: 'full' | 'half') => {
+  // Get available slots for a specific date range with 1/2 juz support and examiner filtering
+  getAvailableSlotsForDateRange: async (classId: string, startDate: string, endDate: string, juzPortion?: 'full' | 'half', examinerId?: string) => {
     try {
       // Get class data
       const classData = get().findClass(classId);
       if (!classData) return [];
+
+      const pengujis = get().pengujis;
+      const targetPengujis = examinerId
+        ? pengujis.filter(p => p.id === examinerId)
+        : pengujis;
+
+      if (targetPengujis.length === 0) return [];
 
       // Get all exams in the date range across ALL classes to prevent cross-class conflicts
       const examsResult = await client.execute({
@@ -599,60 +727,76 @@ const useDataStore = create<DataStore>((set, get) => ({
           return slotNumber <= maxPeriod;
         });
 
-        // Get exams for this specific date
-        const dateExams = existingExams.filter(exam => exam.exam_date_key === dateKey);
+        // Check each examiner
+        for (const penguji of targetPengujis) {
+          // Get examiner's schedule for this day
+          const pengujiDaySchedule = get().getPengujiScheduleForDay(penguji.schedule, dayName);
+          if (pengujiDaySchedule.length === 0) continue;
 
-        // Track period capacity based on what we're booking
-        const fullyBookedPeriods = new Set<string>();
-        const halfJuzPeriodCount: Record<string, number> = {};
+          // Find intersection of class schedule and examiner schedule
+          const availablePeriods = validPeriods.filter(period =>
+            pengujiDaySchedule.includes(period)
+          );
 
-        for (const exam of dateExams) {
-          if (!exam.exam_period) continue;
+          // Get exams for this examiner on this date
+          const dateExams = existingExams.filter(exam =>
+            exam.exam_date_key === dateKey &&
+            exam.examiner_name === penguji.name
+          );
 
-          const periodStr = String(exam.exam_period);
+          // Calculate slot availability (same 1/2 juz logic, but per examiner)
+          const fullyBookedPeriods = new Set<string>();
+          const halfJuzPeriodCount: Record<string, number> = {};
 
-          // 5juz always fully books a slot (incompatible with everything)
-          if (exam.exam_type === '5juz') {
-            fullyBookedPeriods.add(periodStr);
-            continue;
-          }
+          for (const exam of dateExams) {
+            if (!exam.exam_period) continue;
+            const periodStr = String(exam.exam_period);
 
-          // Non-5juz exams
-          const examIsHalfJuz = isHalfJuz(exam.juz_number);
+            // 5juz always fully books a slot (incompatible with everything)
+            if (exam.exam_type === '5juz') {
+              fullyBookedPeriods.add(periodStr);
+              continue;
+            }
 
-          if (juzPortion === 'half') {
-            // Booking 1/2 juz: can share with another 1/2 juz
-            if (examIsHalfJuz) {
-              halfJuzPeriodCount[periodStr] = (halfJuzPeriodCount[periodStr] || 0) + 1;
-              // 2 half juz = fully booked
-              if (halfJuzPeriodCount[periodStr] >= 2) {
+            // Non-5juz exams
+            const examIsHalfJuz = isHalfJuz(exam.juz_number);
+
+            if (juzPortion === 'half') {
+              // Booking 1/2 juz: can share with another 1/2 juz
+              if (examIsHalfJuz) {
+                halfJuzPeriodCount[periodStr] = (halfJuzPeriodCount[periodStr] || 0) + 1;
+                // 2 half juz = fully booked
+                if (halfJuzPeriodCount[periodStr] >= 2) {
+                  fullyBookedPeriods.add(periodStr);
+                }
+              } else {
+                // 1 juz fully books the slot (incompatible with 1/2 juz)
                 fullyBookedPeriods.add(periodStr);
               }
             } else {
-              // 1 juz fully books the slot (incompatible with 1/2 juz)
+              // Booking 1 juz (or unspecified): any existing exam fully books the slot
               fullyBookedPeriods.add(periodStr);
             }
-          } else {
-            // Booking 1 juz (or unspecified): any existing exam fully books the slot
-            fullyBookedPeriods.add(periodStr);
           }
-        }
 
-        // Generate available slots for this day
-        for (const period of validPeriods) {
-          // Slot is available if not fully booked
-          if (!fullyBookedPeriods.has(period)) {
-            const slotDate = new Date(currentDate);
-            const distance = Math.ceil((slotDate.getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+          // Generate available slots for this examiner
+          for (const period of availablePeriods) {
+            // Slot is available if not fully booked
+            if (!fullyBookedPeriods.has(period)) {
+              const slotDate = new Date(currentDate);
+              const distance = Math.ceil((slotDate.getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
 
-            availableSlots.push({
-              date: slotDate,
-              dateKey,
-              period,
-              dayName,
-              displayText: `${dayName}, ${slotDate.getDate()} ${slotDate.toLocaleDateString('id-ID', { month: 'short' })} - ${period.replace('Jam ke-', 'Jam ')}`,
-              distance
-            });
+              availableSlots.push({
+                date: slotDate,
+                dateKey,
+                period,
+                dayName,
+                displayText: `${dayName}, ${slotDate.getDate()} ${slotDate.toLocaleDateString('id-ID', { month: 'short' })} - ${period.replace('Jam ke-', 'Jam ')} (${penguji.name})`,
+                distance,
+                examinerId: penguji.id,
+                examinerName: penguji.name,
+              });
+            }
           }
         }
       }
@@ -665,7 +809,7 @@ const useDataStore = create<DataStore>((set, get) => ({
   },
 
   // Get slots from 5 different nearest dates (not consecutive)
-  getNearestAvailableSlots: async (classId: string, examType: 'non-5juz' | '5juz', limit?: number, juzPortion?: 'full' | 'half') => {
+  getNearestAvailableSlots: async (classId: string, examType: 'non-5juz' | '5juz', limit?: number, juzPortion?: 'full' | 'half', examinerId?: string) => {
     try {
       const targetDates = examType === '5juz' ? 10 : 5;
       const maxSearchDays = 30;
@@ -689,7 +833,8 @@ const useDataStore = create<DataStore>((set, get) => ({
           classId,
           dateKey,
           dateKey,
-          juzPortion
+          juzPortion,
+          examinerId
         );
 
         // If this date has available slots, add all slots from this date

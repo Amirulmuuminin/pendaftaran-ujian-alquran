@@ -12,6 +12,7 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
   disabled = false,
   classId,
   juzPortion,
+  examinerId,
 }) => {
   const { getNearestAvailableSlots, findClass } = useDataStore();
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
@@ -51,7 +52,7 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
       try {
         setLoading(true);
         // Pass current values to avoid stale closure
-        const slots = await getNearestAvailableSlots(effectiveClassId, examType, undefined, juzPortion);
+        const slots = await getNearestAvailableSlots(effectiveClassId, examType, undefined, juzPortion, examinerId);
         setAvailableSlots(slots);
       } catch (error) {
         console.error("Failed to load available slots:", error);
@@ -61,7 +62,7 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
     };
 
     loadSlots();
-  }, [examType, classId, juzPortion]); // Reload when exam type, classId, or juzPortion changes
+  }, [examType, classId, juzPortion, examinerId]); // Reload when exam type, classId, juzPortion, or examinerId changes
 
   
   const handleSlotSelect = (slot: AvailableSlot) => {

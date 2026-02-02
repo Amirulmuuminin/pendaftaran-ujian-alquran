@@ -19,6 +19,7 @@ interface ClassDetailPageProps {
 const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) => {
   const {
     classes,
+    pengujis,
     deleteClass,
     addStudent,
     addStudentOptimized,
@@ -51,11 +52,13 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
   const [juzRange, setJuzRange] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<SlotSelection | undefined>();
+  const [selectedPenguji, setSelectedPenguji] = useState<string | undefined>();
 
   // Form states for exam registration (existing student)
   const [examTypeTab, setExamTypeTab] = useState<'non-5juz' | '5juz'>('non-5juz');
   const [examJuzPortion, setExamJuzPortion] = useState<JuzPortion | undefined>(undefined);
   const [examRegSlot, setExamRegSlot] = useState<SlotSelection | undefined>();
+  const [examRegPenguji, setExamRegPenguji] = useState<string | undefined>();
 
   // Form states for 5 juz schedules (using SlotSelection)
   const [juzSlots, setJuzSlots] = useState<SlotSelection[]>([
@@ -119,6 +122,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     setJuzRange("");
     setNotes("");
     setSelectedSlot(undefined);
+    setSelectedPenguji(undefined);
     setJuzSlots([
       { dateKey: "", period: "" },
       { dateKey: "", period: "" },
@@ -147,6 +151,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
     setJuzRange("");
     setNotes("");
     setExamRegSlot(undefined);
+    setExamRegPenguji(undefined);
     setJuzSlots([
       { dateKey: "", period: "" },
       { dateKey: "", period: "" },
@@ -250,6 +255,9 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
               ? `${examDetail.trim()}${HALF_JUZ_SUFFIX}`
               : examDetail.trim();
 
+            // Get examiner name from selected penguji
+            const examiner = pengujis.find(p => p.id === selectedPenguji);
+
             const examData = {
               exam_date: Math.floor(examDate.getTime() / 1000),
               exam_date_key: selectedSlot!.dateKey,
@@ -260,6 +268,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
               notes: notes.trim() || undefined,
               exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
               exam_period: selectedSlot!.period,
+              examiner_name: examiner?.name || null,
             };
 
             await addExamOptimized(classId, newStudent.id, examData);
@@ -296,6 +305,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
         setJuzRange("");
         setNotes("");
         setSelectedSlot(undefined);
+        setSelectedPenguji(undefined);
         setJuzSlots([
           { dateKey: "", period: "" },
           { dateKey: "", period: "" },
@@ -336,6 +346,9 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           ? `${examDetail.trim()}${HALF_JUZ_SUFFIX}`
           : examDetail.trim();
 
+        // Get examiner name from selected penguji
+        const examiner = pengujis.find(p => p.id === examRegPenguji);
+
         const examData = {
           exam_date: Math.floor(examDate.getTime() / 1000),
           exam_date_key: examRegSlot.dateKey,
@@ -346,6 +359,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           notes: notes.trim() || undefined,
           exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
           exam_period: examRegSlot.period,
+          examiner_name: examiner?.name || null,
         };
 
         await addExamOptimized(classId, selectedStudent.id, examData);
@@ -391,6 +405,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
       setJuzRange("");
       setNotes("");
       setExamRegSlot(undefined);
+      setExamRegPenguji(undefined);
       setJuzSlots([
         { dateKey: "", period: "" },
         { dateKey: "", period: "" },
@@ -490,6 +505,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           setExamDetail("");
           setJuzRange("");
           setNotes("");
+          setSelectedPenguji(undefined);
         }}
         title={studentToEdit ? "Edit Murid" : "Daftarkan Murid"}
       >
@@ -577,7 +593,24 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                       existingExams={getAllClassExams()}
                       classId={classId}
                       juzPortion={registrationTypeTab === 'non-5juz' ? juzPortion : undefined}
+                      examinerId={selectedPenguji}
                     />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pilih Penguji
+                      </label>
+                      <select
+                        value={selectedPenguji || ''}
+                        onChange={(e) => setSelectedPenguji(e.target.value || undefined)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="">Pilih penguji</option>
+                        {pengujis.map((penguji) => (
+                          <option key={penguji.id} value={penguji.id}>{penguji.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -641,6 +674,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           setJuzRange("");
           setNotes("");
           setExamRegSlot(undefined);
+          setExamRegPenguji(undefined);
           setJuzSlots([
             { dateKey: "", period: "" },
             { dateKey: "", period: "" },
@@ -724,7 +758,24 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                   existingExams={selectedStudent?.exams || []}
                   classId={classId}
                   juzPortion={examTypeTab === 'non-5juz' ? examJuzPortion : undefined}
+                  examinerId={examRegPenguji}
                 />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pilih Penguji
+                  </label>
+                  <select
+                    value={examRegPenguji || ''}
+                    onChange={(e) => setExamRegPenguji(e.target.value || undefined)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Pilih penguji</option>
+                    {pengujis.map((penguji) => (
+                      <option key={penguji.id} value={penguji.id}>{penguji.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
