@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useDataStore from "../store";
 import { DaftarKelasPage } from "./pages";
-import { List, BookOpen, Plus, UserCheck } from "lucide-react";
+import { List, BookOpen, Plus, UserCheck, AlertTriangle } from "lucide-react";
 
 // Main App Component with Next.js routing
 const QuranNewApp: React.FC = () => {
@@ -21,6 +21,10 @@ const QuranNewApp: React.FC = () => {
 
   const handleNavigateToPengujis = () => {
     router.push("/penguji");
+  };
+
+  const handleNavigateToDeteksiMasalah = () => {
+    router.push("/deteksi-masalah");
   };
 
   return (
@@ -67,6 +71,13 @@ const QuranNewApp: React.FC = () => {
               >
                 <BookOpen size={24} />
                 <span className="text-xs mt-1 font-medium">Semua Ujian</span>
+              </button>
+              <button
+                onClick={handleNavigateToDeteksiMasalah}
+                className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
+              >
+                <AlertTriangle size={24} />
+                <span className="text-xs mt-1 font-medium">Deteksi Masalah</span>
               </button>
             </div>
           </div>

@@ -8,7 +8,7 @@ import {
   PengujiCard,
   PengujiScheduleSelector,
 } from "../../components/features";
-import { Plus, UserPlus, X, List, BookOpen, UserCheck } from "lucide-react";
+import { Plus, UserPlus, X, List, BookOpen, UserCheck, AlertTriangle } from "lucide-react";
 import { Dialog } from "../../components/ui";
 
 type ExamType = 'full' | 'half';
@@ -111,6 +111,10 @@ export default function PengujiPage() {
 
   const handleNavigateToExams = () => {
     router.push("/semua-ujian");
+  };
+
+  const handleNavigateToDeteksiMasalah = () => {
+    router.push("/deteksi-masalah");
   };
 
   if (loading) return <div className="text-center py-12">Memuat data...</div>;
@@ -307,6 +311,13 @@ export default function PengujiPage() {
             >
               <BookOpen size={24} />
               <span className="text-xs mt-1 font-medium">Semua Ujian</span>
+            </button>
+            <button
+              onClick={handleNavigateToDeteksiMasalah}
+              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
+            >
+              <AlertTriangle size={24} />
+              <span className="text-xs mt-1 font-medium">Deteksi Masalah</span>
             </button>
           </div>
         </div>

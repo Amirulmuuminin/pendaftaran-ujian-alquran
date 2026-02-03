@@ -134,3 +134,22 @@ export interface JuzPortionOption {
   value: JuzPortion;
   label: string;
 }
+
+// Exam problem detection types
+export interface ExamProblem {
+  id: string;
+  type: 'excess-1juz' | 'excess-halfjuz' | 'daily-limit';
+  examinerName: string;
+  dateKey: string;
+  period: string;
+  displayDate: string;
+  // For excess-1juz and excess-halfjuz
+  students?: Array<{
+    studentName: string;
+    className: string;
+    juzNumber: string;
+  }>;
+  // For daily-limit
+  examCount?: number;
+  maxLimit?: number;
+}

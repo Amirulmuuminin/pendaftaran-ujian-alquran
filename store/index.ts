@@ -1,6 +1,6 @@
 "use client";
 import { create } from 'zustand';
-import { ClassData, Exam, DataContextType, AvailableSlot, Penguji } from '../types';
+import { ClassData, Exam, DataContextType, AvailableSlot, Penguji, ExamProblem } from '../types';
 import { HALF_JUZ_SUFFIX } from '../types/constants';
 import client from '../lib/db';
 
@@ -41,6 +41,8 @@ interface DataStore extends DataContextType {
   updatePenguji: (pengujiId: string, updatedData: Partial<Pick<Penguji, 'name' | 'schedule' | 'supported_exam_types' | 'max_exams_per_day'>>) => Promise<void>;
   deletePenguji: (pengujiId: string) => Promise<void>;
   getPengujiScheduleForDay: (pengujiSchedule: string, dayName: string) => string[];
+  // Problem detection
+  detectExamProblems: () => Promise<ExamProblem[]>;
 }
 
 const useDataStore = create<DataStore>((set, get) => ({
@@ -913,6 +915,115 @@ const useDataStore = create<DataStore>((set, get) => ({
       console.error("Failed to get nearest available slots:", err);
       return [];
     }
+  },
+
+  // Detect exam problems across all classes
+  detectExamProblems: async () => {
+    const problems: ExamProblem[] = [];
+    const { classes, pengujis } = get();
+
+    // Helper function to format display date
+    const formatDisplayDate = (dateKey: string, period: string): string => {
+      const date = new Date(dateKey);
+      const dayName = date.toLocaleDateString('id-ID', { weekday: 'long' });
+      const day = date.getDate();
+      const month = date.toLocaleDateString('id-ID', { month: 'short' });
+      const year = date.getFullYear();
+      if (period) {
+        return `${dayName}, ${day} ${month} ${year} - ${period}`;
+      }
+      return `${dayName}, ${day} ${month} ${year}`;
+    };
+
+    // Get all exams from all classes
+    const allExams = classes.flatMap(cls =>
+      cls.students.flatMap(student =>
+        (student.exams || []).map(exam => ({
+          ...exam,
+          studentName: student.name,
+          className: cls.name
+        }))
+      )
+    ).filter(e => e.status !== 'cancelled');
+
+    // Group by examiner, date, and period for slot conflicts
+    const slotGroups = new Map<string, any[]>();
+    for (const exam of allExams) {
+      const key = `${exam.examiner_name || 'default'}|${exam.exam_date_key}|${exam.exam_period}`;
+      if (!slotGroups.has(key)) slotGroups.set(key, []);
+      slotGroups.get(key)!.push(exam);
+    }
+
+    // Check each slot for problems
+    for (const [key, exams] of slotGroups) {
+      const [examinerName, dateKey, period] = key.split('|');
+
+      // Check 1 juz excess (should be max 1)
+      const fullJuzExams = exams.filter(e => !isHalfJuz(e.juz_number) && e.exam_type !== '5juz');
+      if (fullJuzExams.length > 1) {
+        problems.push({
+          id: `excess-1juz-${key}`,
+          type: 'excess-1juz',
+          examinerName: examinerName === 'default' ? 'Ustadz Nawir' : examinerName,
+          dateKey,
+          period,
+          displayDate: formatDisplayDate(dateKey, period),
+          students: fullJuzExams.map(e => ({
+            studentName: e.studentName,
+            className: e.className,
+            juzNumber: e.juz_number
+          }))
+        });
+      }
+
+      // Check 1/2 juz excess (should be max 2)
+      const halfJuzExams = exams.filter(e => isHalfJuz(e.juz_number));
+      if (halfJuzExams.length > 2) {
+        problems.push({
+          id: `excess-halfjuz-${key}`,
+          type: 'excess-halfjuz',
+          examinerName: examinerName === 'default' ? 'Ustadz Nawir' : examinerName,
+          dateKey,
+          period,
+          displayDate: formatDisplayDate(dateKey, period),
+          students: halfJuzExams.map(e => ({
+            studentName: e.studentName,
+            className: e.className,
+            juzNumber: e.juz_number
+          }))
+        });
+      }
+    }
+
+    // Check daily limit
+    const dailyGroups = new Map<string, any[]>();
+    for (const exam of allExams) {
+      const key = `${exam.examiner_name || 'default'}|${exam.exam_date_key}`;
+      if (!dailyGroups.has(key)) dailyGroups.set(key, []);
+      dailyGroups.get(key)!.push(exam);
+    }
+
+    for (const [key, exams] of dailyGroups) {
+      const [examinerName, dateKey] = key.split('|');
+      const penguji = pengujis.find(p =>
+        examinerName === 'default' ? p.name === 'Ustadz Nawir' : p.name === examinerName
+      );
+
+      if (penguji && penguji.max_exams_per_day && exams.length > penguji.max_exams_per_day) {
+        problems.push({
+          id: `daily-limit-${key}`,
+          type: 'daily-limit',
+          examinerName: penguji.name,
+          dateKey,
+          period: 'all',
+          displayDate: formatDisplayDate(dateKey, ''),
+          examCount: exams.length,
+          maxLimit: penguji.max_exams_per_day
+        });
+      }
+    }
+
+    return problems;
   },
 }));
 
