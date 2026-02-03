@@ -38,7 +38,7 @@ interface DataStore extends DataContextType {
   pengujis: Penguji[];
   loadPengujis: () => Promise<void>;
   addPenguji: (pengujiData: Omit<Penguji, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
-  updatePenguji: (pengujiId: string, updatedData: Partial<Pick<Penguji, 'name' | 'schedule' | 'supported_exam_types'>>) => Promise<void>;
+  updatePenguji: (pengujiId: string, updatedData: Partial<Pick<Penguji, 'name' | 'schedule' | 'supported_exam_types' | 'max_exams_per_day'>>) => Promise<void>;
   deletePenguji: (pengujiId: string) => Promise<void>;
   getPengujiScheduleForDay: (pengujiSchedule: string, dayName: string) => string[];
 }
@@ -124,6 +124,7 @@ const useDataStore = create<DataStore>((set, get) => ({
         name: row.name,
         schedule: row.schedule,
         supported_exam_types: row.supported_exam_types || '["full","half"]',
+        max_exams_per_day: row.max_exams_per_day || null,
         created_at: row.created_at,
         updated_at: row.updated_at,
       }));
@@ -350,7 +351,7 @@ const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       await client.execute({
-        sql: "INSERT INTO exams (id, student_id, class_id, exam_date, exam_date_key, status, score, juz_number, exam_type, notes, exam_day, exam_period, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        sql: "INSERT INTO exams (id, student_id, class_id, exam_date, exam_date_key, status, score, juz_number, exam_type, notes, exam_day, exam_period, examiner_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         args: [
           id,
           studentId,
@@ -364,6 +365,7 @@ const useDataStore = create<DataStore>((set, get) => ({
           examData.notes || null,
           examData.exam_day || null,
           examData.exam_period || null,
+          examData.examiner_name || null,
           now,
           now,
         ],
@@ -383,7 +385,7 @@ const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       await client.execute({
-        sql: "INSERT INTO exams (id, student_id, class_id, exam_date, exam_date_key, status, score, juz_number, exam_type, notes, exam_day, exam_period, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        sql: "INSERT INTO exams (id, student_id, class_id, exam_date, exam_date_key, status, score, juz_number, exam_type, notes, exam_day, exam_period, examiner_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         args: [
           id,
           studentId,
@@ -397,6 +399,7 @@ const useDataStore = create<DataStore>((set, get) => ({
           examData.notes || null,
           examData.exam_day || null,
           examData.exam_period || null,
+          examData.examiner_name || null,
           now,
           now,
         ],
@@ -416,6 +419,7 @@ const useDataStore = create<DataStore>((set, get) => ({
         notes: examData.notes,
         exam_day: examData.exam_day,
         exam_period: examData.exam_period,
+        examiner_name: examData.examiner_name,
         created_at: now,
         updated_at: now,
       };
@@ -501,6 +505,7 @@ const useDataStore = create<DataStore>((set, get) => ({
           name: row.name,
           schedule: row.schedule,
           supported_exam_types: row.supported_exam_types || '["full","half"]',
+          max_exams_per_day: row.max_exams_per_day || null,
           created_at: row.created_at,
           updated_at: row.updated_at,
         }))
@@ -516,8 +521,8 @@ const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       await client.execute({
-        sql: "INSERT INTO penguji (id, name, schedule, supported_exam_types, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        args: [id, pengujiData.name, pengujiData.schedule, pengujiData.supported_exam_types, now, now],
+        sql: "INSERT INTO penguji (id, name, schedule, supported_exam_types, max_exams_per_day, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        args: [id, pengujiData.name, pengujiData.schedule, pengujiData.supported_exam_types, pengujiData.max_exams_per_day || null, now, now],
       });
       await get().loadPengujis();
     } catch (err) {
@@ -544,6 +549,10 @@ const useDataStore = create<DataStore>((set, get) => ({
       if (updatedData.supported_exam_types !== undefined) {
         fields.push("supported_exam_types = ?");
         values.push(updatedData.supported_exam_types);
+      }
+      if (updatedData.max_exams_per_day !== undefined) {
+        fields.push("max_exams_per_day = ?");
+        values.push(updatedData.max_exams_per_day);
       }
 
       fields.push("updated_at = ?");
@@ -783,6 +792,15 @@ const useDataStore = create<DataStore>((set, get) => ({
 
             return exam.examiner_name === penguji.name;
           });
+
+          // Check daily exam limit for this examiner
+          if (penguji.max_exams_per_day !== null && penguji.max_exams_per_day > 0) {
+            const dailyExamCount = dateExams.length;
+            if (dailyExamCount >= penguji.max_exams_per_day) {
+              // Skip this examiner - daily limit reached, move to next examiner
+              continue;
+            }
+          }
 
           // Calculate slot availability (same 1/2 juz logic, but per examiner)
           const fullyBookedPeriods = new Set<string>();

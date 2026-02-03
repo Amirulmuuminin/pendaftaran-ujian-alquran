@@ -61,6 +61,9 @@ export const PengujiCard: React.FC<PengujiCardProps> = ({ penguji, onEdit, onDel
           {supportedTypes.includes('half') && (
             <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs rounded-full">1/2 Juz</span>
           )}
+          {penguji.max_exams_per_day && (
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Max: {penguji.max_exams_per_day}/hari</span>
+          )}
         </div>
       </div>
 

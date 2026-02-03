@@ -21,7 +21,8 @@
       "Bash(ls:*)",
       "Bash(curl:*)",
       "Bash(npx dotenv-cli:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

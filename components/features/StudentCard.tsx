@@ -1,7 +1,7 @@
 import React from "react";
 import { Student, Exam } from "../../types";
 import { Button } from "../ui";
-import { Plus, Edit, Trash2, BookOpen, Award } from "lucide-react";
+import { Plus, Edit, Trash2, BookOpen, Award, UserCheck } from "lucide-react";
 
 interface StudentCardProps {
   student: Student;
@@ -102,27 +102,32 @@ const StudentCard: React.FC<StudentCardProps> = ({
                       </div>
 
                       {/* Schedule */}
-                      <div className="text-xs text-gray-600">
-                        {exam.exam_date_key && exam.exam_period ? (
-                          <span>
-                            {new Date(exam.exam_date_key + 'T00:00:00').toLocaleDateString('id-ID', {
-                              weekday: 'short',
-                              day: 'numeric',
-                              month: 'short'
-                            })} • {exam.exam_period}
-                          </span>
-                        ) : exam.exam_day && exam.exam_period ? (
-                          <span>{exam.exam_day} • {exam.exam_period}</span>
-                        ) : (
-                          <span>{new Date(exam.exam_date * 1000).toLocaleDateString('id-ID')}</span>
-                        )}
-                        {exam.notes && <span className="ml-2 text-gray-500">• {exam.notes}</span>}
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span>
+                          {exam.exam_date_key && exam.exam_period ? (
+                            <span>
+                              {new Date(exam.exam_date_key + 'T00:00:00').toLocaleDateString('id-ID', {
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'short'
+                              })} • {exam.exam_period}
+                            </span>
+                          ) : exam.exam_day && exam.exam_period ? (
+                            <span>{exam.exam_day} • {exam.exam_period}</span>
+                          ) : (
+                            <span>{new Date(exam.exam_date * 1000).toLocaleDateString('id-ID')}</span>
+                          )}
+                        </span>
+                        {exam.notes && <span className="text-gray-500">• {exam.notes}</span>}
                       </div>
 
-                      {/* Examiner Name if exists */}
+                      {/* Examiner Name with badge */}
                       {exam.examiner_name && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          Penguji: {exam.examiner_name}
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <UserCheck size={11} className="text-indigo-500" />
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {exam.examiner_name}
+                          </span>
                         </div>
                       )}
                     </div>

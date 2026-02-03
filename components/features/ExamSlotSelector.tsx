@@ -69,6 +69,8 @@ const ExamSlotSelector: React.FC<ExamSlotSelectorProps> = ({
     const selection: SlotSelection = {
       dateKey: slot.dateKey,
       period: slot.period,
+      examinerId: slot.examinerId,
+      examinerName: slot.examinerName,
     };
     onSlotChange(selection);
   };

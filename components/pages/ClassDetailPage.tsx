@@ -186,6 +186,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
         notes: selectedExam.notes,
         exam_day: newExamDate.toLocaleDateString('id-ID', { weekday: 'long' }),
         exam_period: editExamNewSlot.period,
+        examiner_name: editExamNewSlot.examinerName || null,
       };
 
       await addExamOptimized(classId, selectedStudent.id, examData);
@@ -260,7 +261,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
               notes: notes.trim() || undefined,
               exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
               exam_period: selectedSlot!.period,
-              examiner_name: null,
+              examiner_name: selectedSlot!.examinerName || null,
             };
 
             await addExamOptimized(classId, newStudent.id, examData);
@@ -347,7 +348,7 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
           notes: notes.trim() || undefined,
           exam_day: examDate.toLocaleDateString('id-ID', { weekday: 'long' }),
           exam_period: examRegSlot.period,
-          examiner_name: null,
+          examiner_name: examRegSlot.examinerName || null,
         };
 
         await addExamOptimized(classId, selectedStudent.id, examData);
@@ -810,6 +811,14 @@ const ClassDetailPage: React.FC<ClassDetailPageProps> = ({ classId, onBack }) =>
                 ) : '-'}
               </span>
             </div>
+            {selectedExam?.examiner_name && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Penguji Saat Ini:</span>
+                <span className="text-sm font-medium text-indigo-700">
+                  {selectedExam.examiner_name}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* New Slot Selector */}

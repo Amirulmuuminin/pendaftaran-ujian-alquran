@@ -41,6 +41,7 @@ export interface Penguji {
   name: string;
   schedule: string; // JSON string
   supported_exam_types: string; // JSON string array of 'full' and/or 'half'
+  max_exams_per_day: number | null; // null = unlimited
   created_at: number;
   updated_at: number;
 }
@@ -104,6 +105,8 @@ export interface AvailableSlot {
 export interface SlotSelection {
   dateKey: string;
   period: string;
+  examinerId?: string;
+  examinerName?: string;
 }
 
 export interface ExamSlotSelectorProps {

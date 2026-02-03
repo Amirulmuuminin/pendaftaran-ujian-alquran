@@ -24,6 +24,7 @@ export default function PengujiPage() {
   const [pengujiName, setPengujiName] = useState("");
   const [pengujiSchedule, setPengujiSchedule] = useState("{}");
   const [supportedExamTypes, setSupportedExamTypes] = useState<ExamType[]>(['full', 'half']);
+  const [maxExamsPerDay, setMaxExamsPerDay] = useState<string>("");
 
   useEffect(() => {
     loadPengujis().then(() => setLoading(false));
@@ -34,6 +35,7 @@ export default function PengujiPage() {
     setPengujiName("");
     setPengujiSchedule("{}");
     setSupportedExamTypes(['full', 'half']);
+    setMaxExamsPerDay("");
     setIsDialogOpen(true);
   };
 
@@ -47,6 +49,7 @@ export default function PengujiPage() {
     } catch {
       setSupportedExamTypes(['full', 'half']);
     }
+    setMaxExamsPerDay(penguji.max_exams_per_day ? String(penguji.max_exams_per_day) : '');
     setIsDialogOpen(true);
   };
 
@@ -61,12 +64,20 @@ export default function PengujiPage() {
       return;
     }
 
+    // Parse max_exams_per_day value
+    const maxExamsPerDayNum = maxExamsPerDay.trim() === '' ? null : parseInt(maxExamsPerDay);
+    if (maxExamsPerDayNum !== null && (isNaN(maxExamsPerDayNum) || maxExamsPerDayNum < 1)) {
+      toast.error("Ujian maksimal perhari harus berupa angka positif.");
+      return;
+    }
+
     try {
       if (editingPenguji) {
         await updatePenguji(editingPenguji.id, {
           name: pengujiName.trim(),
           schedule: pengujiSchedule,
           supported_exam_types: JSON.stringify(supportedExamTypes),
+          max_exams_per_day: maxExamsPerDayNum,
         });
         toast.success("Penguji berhasil diperbarui!");
       } else {
@@ -74,6 +85,7 @@ export default function PengujiPage() {
           name: pengujiName.trim(),
           schedule: pengujiSchedule,
           supported_exam_types: JSON.stringify(supportedExamTypes),
+          max_exams_per_day: maxExamsPerDayNum,
         });
         toast.success("Penguji berhasil ditambahkan!");
       }
@@ -209,6 +221,23 @@ export default function PengujiPage() {
                 <span className="text-sm text-gray-700">1/2 Juz</span>
               </label>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ujian Maksimal Perhari (Opsional)
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={maxExamsPerDay}
+              onChange={(e) => setMaxExamsPerDay(e.target.value)}
+              placeholder="Kosongkan untuk tidak ada batas"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Jika diisi, slot akan tertutup otomatis jika batas tercapai
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
