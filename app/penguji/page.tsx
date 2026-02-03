@@ -8,7 +8,7 @@ import {
   PengujiCard,
   PengujiScheduleSelector,
 } from "../../components/features";
-import { Plus, UserPlus, X, List, BookOpen, UserCheck, AlertTriangle } from "lucide-react";
+import { Plus, UserPlus, X, List, BookOpen, UserCheck, AlertTriangle, Settings } from "lucide-react";
 import { Dialog } from "../../components/ui";
 
 type ExamType = 'full' | 'half';
@@ -115,6 +115,10 @@ export default function PengujiPage() {
 
   const handleNavigateToDeteksiMasalah = () => {
     router.push("/deteksi-masalah");
+  };
+
+  const handleNavigateToBackup = () => {
+    router.push("/backup");
   };
 
   if (loading) return <div className="text-center py-12">Memuat data...</div>;
@@ -318,6 +322,13 @@ export default function PengujiPage() {
             >
               <AlertTriangle size={24} />
               <span className="text-xs mt-1 font-medium">Deteksi Masalah</span>
+            </button>
+            <button
+              onClick={handleNavigateToBackup}
+              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
+            >
+              <Settings size={24} />
+              <span className="text-xs mt-1 font-medium">Backup</span>
             </button>
           </div>
         </div>

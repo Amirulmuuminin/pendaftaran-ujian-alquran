@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useDataStore from "@/store";
 import { ExamProblem } from "@/types";
-import { AlertTriangle, AlertCircle, List, UserCheck, BookOpen, RefreshCw } from "lucide-react";
+import { AlertTriangle, AlertCircle, List, UserCheck, BookOpen, RefreshCw, Settings } from "lucide-react";
 
 export default function DeteksiMasalahPage() {
   const router = useRouter();
@@ -33,6 +33,10 @@ export default function DeteksiMasalahPage() {
 
   const handleNavigateToExams = () => {
     router.push("/semua-ujian");
+  };
+
+  const handleNavigateToBackup = () => {
+    router.push("/backup");
   };
 
   // Group problems by type
@@ -228,6 +232,13 @@ export default function DeteksiMasalahPage() {
             <button className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-orange-600">
               <AlertTriangle size={24} />
               <span className="text-xs mt-1 font-medium">Deteksi Masalah</span>
+            </button>
+            <button
+              onClick={handleNavigateToBackup}
+              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
+            >
+              <Settings size={24} />
+              <span className="text-xs mt-1 font-medium">Backup</span>
             </button>
           </div>
         </div>

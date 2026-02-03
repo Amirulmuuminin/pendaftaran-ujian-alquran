@@ -22,7 +22,9 @@
       "Bash(curl:*)",
       "Bash(npx dotenv-cli:*)",
       "Bash(pkill:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(npx tsc:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

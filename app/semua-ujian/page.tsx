@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useDataStore from "@/store";
 import { SemuaUjianPageWithRouting } from "@/components/pages";
-import { BookOpen, List, UserCheck, AlertTriangle } from "lucide-react";
+import { BookOpen, List, UserCheck, AlertTriangle, Settings } from "lucide-react";
 
 export default function SemuaUjianPageRoute() {
   const { loadData } = useDataStore();
@@ -24,6 +24,10 @@ export default function SemuaUjianPageRoute() {
 
   const handleNavigateToDeteksiMasalah = () => {
     router.push("/deteksi-masalah");
+  };
+
+  const handleNavigateToBackup = () => {
+    router.push("/backup");
   };
 
   return (
@@ -75,6 +79,13 @@ export default function SemuaUjianPageRoute() {
             >
               <AlertTriangle size={24} />
               <span className="text-xs mt-1 font-medium">Deteksi Masalah</span>
+            </button>
+            <button
+              onClick={handleNavigateToBackup}
+              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
+            >
+              <Settings size={24} />
+              <span className="text-xs mt-1 font-medium">Backup</span>
             </button>
           </div>
         </div>
