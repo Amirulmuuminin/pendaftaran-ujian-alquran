@@ -20,7 +20,9 @@ const DaftarKelasPage: React.FC = () => {
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
   const [classToEdit, setClassToEdit] = useState<ClassData | null>(null);
   const [className, setClassName] = useState("");
-  const [selectedSchedule, setSelectedSchedule] = useState<Record<string, number[]>>({});
+  const [selectedSchedule, setSelectedSchedule] = useState<
+    Record<string, number[]>
+  >({});
 
   const handleAddClass = () => {
     setClassToEdit(null);
@@ -40,16 +42,16 @@ const DaftarKelasPage: React.FC = () => {
       // UI format: {"Senin": [1, 2], ...}
       const convertedSchedule: Record<string, number[]> = {};
 
-      Object.keys(scheduleData).forEach(day => {
+      Object.keys(scheduleData).forEach((day) => {
         const dayKey = day.charAt(0).toUpperCase() + day.slice(1); // senin -> Senin
         const timeSlots = scheduleData[day];
 
         // Convert "Jam ke-X" strings to numbers
         const convertedSlots = timeSlots.map((slot: string | number) => {
-          if (typeof slot === 'number') {
+          if (typeof slot === "number") {
             return slot;
-          } else if (typeof slot === 'string' && slot.includes('Jam ke-')) {
-            return parseInt(slot.replace('Jam ke-', ''));
+          } else if (typeof slot === "string" && slot.includes("Jam ke-")) {
+            return parseInt(slot.replace("Jam ke-", ""));
           } else {
             // Fallback for unexpected formats
             return parseInt(slot.toString());
@@ -67,14 +69,18 @@ const DaftarKelasPage: React.FC = () => {
   };
 
   const handleDeleteClass = async (classId: string) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus kelas ini? Semua data murid dan ujian akan hilang.")) {
+    if (
+      window.confirm(
+        "Apakah Anda yakin ingin menghapus kelas ini? Semua data murid dan ujian akan hilang.",
+      )
+    ) {
       await deleteClass(classId);
       toast.success("Kelas berhasil dihapus!");
     }
   };
 
   const toggleScheduleSlot = (day: string, slot: number) => {
-    setSelectedSchedule(prev => {
+    setSelectedSchedule((prev) => {
       const updated = { ...prev };
       if (!updated[day]) {
         updated[day] = [];
@@ -82,7 +88,7 @@ const DaftarKelasPage: React.FC = () => {
 
       const index = updated[day].indexOf(slot);
       if (index > -1) {
-        updated[day] = updated[day].filter(s => s !== slot);
+        updated[day] = updated[day].filter((s) => s !== slot);
         if (updated[day].length === 0) {
           delete updated[day];
         }
@@ -104,7 +110,9 @@ const DaftarKelasPage: React.FC = () => {
     for (const day of scheduleDays) {
       const slots = selectedSchedule[day] || [];
       if (slots.length < 2 || slots.length > 3) {
-        toast.error(`Pilih 2-3 jam pelajaran Qur'an untuk setiap hari. Periksa kembali hari ${day}.`);
+        toast.error(
+          `Pilih 2-3 jam pelajaran Qur'an untuk setiap hari. Periksa kembali hari ${day}.`,
+        );
         return;
       }
     }
@@ -114,7 +122,7 @@ const DaftarKelasPage: React.FC = () => {
     // Database format: {"senin": ["Jam ke-1", "Jam ke-2"], ...}
     const convertedScheduleForDb: Record<string, string[]> = {};
 
-    Object.keys(selectedSchedule).forEach(day => {
+    Object.keys(selectedSchedule).forEach((day) => {
       const dayKey = day.toLowerCase(); // Senin -> senin
       const timeSlots = selectedSchedule[day];
 
@@ -163,10 +171,6 @@ const DaftarKelasPage: React.FC = () => {
 
   return (
     <div className="relative">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Daftar Kelas</h2>
-      </div>
-
       {classes.length === 0 ? (
         <div className="text-center py-16">
           <Users size={64} className="mx-auto text-gray-400 mb-4" />
@@ -229,7 +233,10 @@ const DaftarKelasPage: React.FC = () => {
               </label>
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {scheduleDays.map((day) => (
-                  <div key={day} className="border border-gray-200 rounded-lg p-3">
+                  <div
+                    key={day}
+                    className="border border-gray-200 rounded-lg p-3"
+                  >
                     <h4 className="font-medium text-gray-900 mb-2">{day}</h4>
                     <div className="grid grid-cols-5 gap-2">
                       {scheduleSlots.map((slot) => (
@@ -239,8 +246,8 @@ const DaftarKelasPage: React.FC = () => {
                           onClick={() => toggleScheduleSlot(day, slot.value)}
                           className={`p-2 text-xs rounded transition-colors ${
                             selectedSchedule[day]?.includes(slot.value)
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                           }`}
                         >
                           {slot.label}
@@ -251,7 +258,12 @@ const DaftarKelasPage: React.FC = () => {
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Total terpilih: {Object.values(selectedSchedule).reduce((sum, slots) => sum + slots.length, 0)} jam
+                Total terpilih:{" "}
+                {Object.values(selectedSchedule).reduce(
+                  (sum, slots) => sum + slots.length,
+                  0,
+                )}{" "}
+                jam
               </p>
             </div>
           </div>

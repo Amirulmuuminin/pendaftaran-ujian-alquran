@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useDataStore from "@/store";
 import { SemuaUjianPageWithRouting } from "@/components/pages";
-import { BookOpen, List, UserCheck, AlertTriangle, Settings } from "lucide-react";
+import { BookOpen, List, UserCheck } from "lucide-react";
 
 export default function SemuaUjianPageRoute() {
   const { loadData } = useDataStore();
@@ -20,14 +20,6 @@ export default function SemuaUjianPageRoute() {
 
   const handleNavigateToPengujis = () => {
     router.push("/penguji");
-  };
-
-  const handleNavigateToDeteksiMasalah = () => {
-    router.push("/deteksi-masalah");
-  };
-
-  const handleNavigateToBackup = () => {
-    router.push("/backup");
   };
 
   return (
@@ -67,25 +59,9 @@ export default function SemuaUjianPageRoute() {
               <UserCheck size={24} />
               <span className="text-xs mt-1 font-medium">Penguji</span>
             </button>
-            <button
-              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-blue-600"
-            >
+            <button className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-blue-600">
               <BookOpen size={24} />
               <span className="text-xs mt-1 font-medium">Semua Ujian</span>
-            </button>
-            <button
-              onClick={handleNavigateToDeteksiMasalah}
-              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
-            >
-              <AlertTriangle size={24} />
-              <span className="text-xs mt-1 font-medium">Deteksi Masalah</span>
-            </button>
-            <button
-              onClick={handleNavigateToBackup}
-              className="flex flex-col items-center py-3 px-4 min-w-0 flex-1 transition-colors text-gray-500 hover:text-gray-700"
-            >
-              <Settings size={24} />
-              <span className="text-xs mt-1 font-medium">Backup</span>
             </button>
           </div>
         </div>

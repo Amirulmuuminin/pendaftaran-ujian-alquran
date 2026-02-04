@@ -1,6 +1,5 @@
 "use client";
 import { Suspense } from "react";
-import { ArrowLeft, Users } from "lucide-react";
 import DetailKelasPageContent from "./DetailKelasPageContent";
 
 export default function DetailKelasPage() {
